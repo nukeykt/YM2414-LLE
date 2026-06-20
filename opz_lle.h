@@ -35,5 +35,56 @@ typedef struct {
     int write1_trig;
     int write1_l[3];
 
+    int reg_write_08[2];
+    int reg_write_09[2];
+    int reg_write_0a[2];
+    int reg_write_0b[2];
+    int reg_write_0c[2];
+    int reg_write_0d[2];
+    int reg_write_0e[2];
+    int reg_write_0f[2];
+    int reg_write_10[2];
+    int reg_write_11[2];
+    int reg_write_12[2];
+    int reg_write_14[2];
+    int reg_write_15[2];
+    int reg_write_16[2];
+    int reg_write_17[2];
+    int reg_write_18[2];
+    int reg_write_19[2];
+    int reg_write_1b[2];
+    int reg_write_1c[2];
+    int reg_write_1e[2];
+
+    int reg_kon_channel[2];
+    int reg_kon_operator[2];
+    int reg_test[2];
+    int reg_a[2];
+    int reg_a3[2];
+    int reg_b[2];
+    int reg_c[2];
+    int reg_d[2];
+    int reg_e[2];
+    int reg_noise_en[2];
+    int reg_noise_freq[2];
+    int reg_timer_a[2];
+    int reg_timer_b[2];
+    int reg_timer_a_load[2];
+    int reg_timer_b_load[2];
+    int reg_timer_a_irq[2];
+    int reg_timer_b_irq[2];
+    int reg_15[2];
+    int reg_16[2];
+    int reg_17_amd[2];
+    int reg_17_pmd[2];
+    int reg_lfo_freq[2];
+    int reg_lfo_amd[2];
+    int reg_lfo_pmd[2];
+    int reg_lfo_wave[2];
+    int reg_lfo2_wave[2];
+    int reg_ct[2];
+    int reg_1c[2];
+    int reg_1e[2];
+
 } ym2141_t;
 
