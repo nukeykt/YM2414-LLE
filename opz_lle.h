@@ -24,7 +24,6 @@ typedef struct {
     int o_ct2;
     int o_irq_pull; // pull gnd
 
-    int ic_async;
     int ic_sync;
     int ic_latch[2];
     int clk_toggle[2];
@@ -65,7 +64,6 @@ typedef struct {
     int reg_c[2];
     int reg_d[2];
     int reg_e[2];
-    int reg_noise_en[2];
     int reg_noise_freq[2];
     int reg_timer_a[2];
     int reg_timer_b[2];
@@ -85,6 +83,32 @@ typedef struct {
     int reg_ct[2];
     int reg_1c[2];
     int reg_1e[2];
+
+    int fsm_ic_latch[2];
+    int fsm_rst;
+    int fsm_cnt[2];
+    int fsm_4;
+    int fsm_8[2];
+    int fsm_13[2];
+    int fsm_29[2];
+    int fsm_30[2];
+    int fsm_o1[2]; // 31-14
+    int fsm_o2[2]; // 9, 25
+    int fsm_o3[2]; // 2, 18
+    int fsm_o4[2]; // 31-6, 15-22
+    int fsm_o5[2]; // 4-19
+    int fsm_o6[2]; // 5, 21
+    int fsm_o7[2]; // 15-22
+    int fsm_o8[2]; // 31-6
+    int fsm_o9[2]; // 3, 11, 19, 27
+    int fsm_op_sync[2];
+    int fsm_op_cnt[2];
+    int fsm_alg_latch;
+    int fsm_alg_o[9];
+
+    int noise_cnt[2];
+    int noise_cnt_match[3];
+    int noise_cnt_inc;
 
 } ym2141_t;
 
