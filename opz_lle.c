@@ -345,8 +345,11 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->fsm_4 = cnt == 4;
         chip->fsm_8[0] = cnt == 7;
         chip->fsm_13[0] = cnt == 12;
+        chip->fsm_14 = cnt == 14;
+        chip->fsm_19[0] = cnt == 19;
         chip->fsm_29[0] = cnt == 28;
         chip->fsm_30[0] = cnt == 29;
+        chip->fsm_31[0] = cnt == 30;
         chip->fsm_o1[0] = cnt == 30 || cnt == 31 || cnt == 0 || cnt == 1 || cnt == 2 || cnt == 3 || cnt == 4 || cnt == 5 || cnt == 6 || cnt == 7 || cnt == 8 || cnt == 9 || cnt == 10 || cnt == 11 || cnt == 12 || cnt == 13;
         chip->fsm_o2[0] = cnt == 8 || cnt == 24;
         chip->fsm_o3[0] = cnt == 1 || cnt == 17;
@@ -356,6 +359,18 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->fsm_o7[0] = cnt == 14 || cnt == 15 || cnt == 16 || cnt == 17 || cnt == 18 || cnt == 19 || cnt == 20 || cnt == 21;
         chip->fsm_o8[0] = cnt == 30 || cnt == 31 || cnt == 0 || cnt == 1 || cnt == 2 || cnt == 3 || cnt == 4 || cnt == 5;
         chip->fsm_o9[0] = cnt == 2 || cnt == 10 || cnt == 18 || cnt == 26;
+        chip->fsm_o10[0] = cnt == 30 || cnt == 31 || cnt == 0 || cnt == 1 || cnt == 2 || cnt == 3 || cnt == 4 || cnt == 5;
+        chip->fsm_o11[0] = cnt == 30 || cnt == 31 || cnt == 0 || cnt == 1 || cnt == 2 || cnt == 3 || cnt == 4 || cnt == 5 || cnt == 6 || cnt == 7;
+        chip->fsm_o12[0] = cnt == 8 || cnt == 9 || cnt == 10 || cnt == 11 || cnt == 12 || cnt == 13 || cnt == 14 || cnt == 15 || cnt == 16 || cnt == 17;
+        chip->fsm_o13[0] = cnt == 31 || cnt == 0 || cnt == 1 || cnt == 2 || cnt == 3 || cnt == 4 || cnt == 5 || cnt == 6 || cnt == 7;
+        chip->fsm_o14[0] = cnt == 21 || cnt == 22 || cnt == 23 || cnt == 24 || cnt == 25 || cnt == 26 || cnt == 27 || cnt == 28 || cnt == 29;
+        chip->fsm_o15[0] = cnt == 20 || cnt == 21 || cnt == 22 || cnt == 23 || cnt == 24 || cnt == 25 || cnt == 26 || cnt == 27 || cnt == 28 || cnt == 29;
+        chip->fsm_o16 = cnt == 11 || cnt == 27;
+        chip->fsm_o17[0] = cnt == 22 || cnt == 23 || cnt == 24 || cnt == 25 || cnt == 26 || cnt == 27;
+        chip->fsm_o18[0] = cnt == 20 || cnt == 21;
+        chip->fsm_o19[0] = cnt == 22 || cnt == 23 || cnt == 24 || cnt == 25 || cnt == 26 || cnt == 27 || cnt == 28 || cnt == 29;
+        chip->fsm_o20[0] = cnt == 2 || cnt == 18;
+        chip->fsm_o21 = cnt == 14 || cnt == 30;
 
         chip->fsm_op_sync[0] = (chip->fsm_op_sync[1] << 1) | chip->fsm_o9[1];
 
@@ -370,8 +385,10 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->fsm_cnt[1] = chip->fsm_cnt[0];
         chip->fsm_8[1] = chip->fsm_8[0];
         chip->fsm_13[1] = chip->fsm_13[0];
+        chip->fsm_19[1] = chip->fsm_19[0];
         chip->fsm_29[1] = chip->fsm_29[0];
         chip->fsm_30[1] = chip->fsm_30[0];
+        chip->fsm_31[1] = chip->fsm_31[0];
         chip->fsm_o1[1] = chip->fsm_o1[0];
         chip->fsm_o2[1] = chip->fsm_o2[0];
         chip->fsm_o3[1] = chip->fsm_o3[0];
@@ -381,6 +398,17 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->fsm_o7[1] = chip->fsm_o7[0];
         chip->fsm_o8[1] = chip->fsm_o8[0];
         chip->fsm_o9[1] = chip->fsm_o9[0];
+        chip->fsm_o10[1] = chip->fsm_o10[0];
+        chip->fsm_o11[1] = chip->fsm_o11[0];
+        chip->fsm_o12[1] = chip->fsm_o12[0];
+        chip->fsm_o13[1] = chip->fsm_o13[0];
+        chip->fsm_o14[1] = chip->fsm_o14[0];
+        chip->fsm_o15[1] = chip->fsm_o15[0];
+        chip->fsm_o16[1] = chip->fsm_o16[0];
+        chip->fsm_o17[1] = chip->fsm_o17[0];
+        chip->fsm_o18[1] = chip->fsm_o18[0];
+        chip->fsm_o19[1] = chip->fsm_o19[0];
+        chip->fsm_o20[1] = chip->fsm_o20[0];
         chip->fsm_op_sync[1] = chip->fsm_op_sync[0];
         chip->fsm_op_cnt[1] = chip->fsm_op_cnt[0];
         int op = chip->fsm_op_cnt[0];
@@ -449,12 +477,31 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
             chip->noise_cnt[0] = (chip->noise_cnt[1] + chip->noise_cnt_inc) & 31;
         }
         chip->noise_cnt_match[1] = chip->noise_cnt_match[0];
+
+        int noise_step = ic_async || chip->noise_cnt_match[2];
+
+        if (noise_step) {
+            chip->noise_bit[0] = (chip->noise_lfsr[1] >> 15) & 1;
+        } else {
+            chip->noise_bit[0] = chip->noise_bit[1];
+        }
+
+        chip->noise_lfsr[0] = chip->noise_lfsr[1] << 1;
+        if (noise_step) {
+            int rst = (chip->noise_lfsr[1] & 0xffff) == 0 && !chip->noise_bit[1];
+            int xr = (chip->noise_lfsr[1] >> 13) & 1;
+            xr ^= chip->noise_bit[1];
+        } else {
+        }
+
     }
     if (hclk2) {
         chip->noise_cnt[1] = chip->noise_cnt[0];
-        chip->noise_cnt_inc = x;
+        chip->noise_cnt_inc = chip->fsm_o21;
         chip->noise_cnt_match[0] = chip->noise_cnt[0] == (chip->reg_noise_freq[0] ^ 31);
         chip->noise_cnt_match[2] = chip->noise_cnt_match[1];
+        chip->noise_bit[1] = chip->noise_bit[0];
+        chip->noise_lfsr[1] = chip->noise_lfsr[0];
     }
 
 }

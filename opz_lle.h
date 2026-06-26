@@ -90,8 +90,11 @@ typedef struct {
     int fsm_4;
     int fsm_8[2];
     int fsm_13[2];
+    int fsm_14;
+    int fsm_19[2];
     int fsm_29[2];
     int fsm_30[2];
+    int fsm_31[2];
     int fsm_o1[2]; // 31-14
     int fsm_o2[2]; // 9, 25
     int fsm_o3[2]; // 2, 18
@@ -101,6 +104,18 @@ typedef struct {
     int fsm_o7[2]; // 15-22
     int fsm_o8[2]; // 31-6
     int fsm_o9[2]; // 3, 11, 19, 27
+    int fsm_o10[2]; // 31-6
+    int fsm_o11[2]; // 31-8
+    int fsm_o12[2]; // 9-18
+    int fsm_o13[2]; // 0-8
+    int fsm_o14[2]; // 22-30
+    int fsm_o15[2]; // 21-30
+    int fsm_o16; // 11, 27
+    int fsm_o17[2]; // 23-28
+    int fsm_o18[2]; // 21-22
+    int fsm_o19[2]; // 23-30
+    int fsm_o20[2]; // 3, 19
+    int fsm_o21; // 14, 30
     int fsm_op_sync[2];
     int fsm_op_cnt[2];
     int fsm_alg_latch;
@@ -109,6 +124,8 @@ typedef struct {
     int noise_cnt[2];
     int noise_cnt_match[3];
     int noise_cnt_inc;
+    int noise_bit[2];
+    int noise_lfsr[2];
 
 } ym2141_t;
 
