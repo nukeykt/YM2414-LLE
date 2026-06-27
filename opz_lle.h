@@ -127,5 +127,45 @@ typedef struct {
     int noise_bit[2];
     int noise_lfsr[2];
 
+    int reg_address[2];
+    int reg_address_valid[2];
+    int reg_data[2];
+    int reg_data_valid[2];
+    int reg_counter[2];
+    int reg_match00;
+    int reg_match20;
+    int reg_match20_l[2];
+    int reg_match28;
+    int reg_match30;
+    int reg_match38;
+    int reg_match40;
+    int reg_match60;
+    int reg_match80;
+    int reg_matcha0;
+    int reg_matchc0;
+    int reg_matche0;
+    int reg_op_sel[2];
+    int reg_ch_sel[2];
+    int reg_unkmode;
+    int reg_unksel1;
+    int reg_unksel2;
+
+    int reg_ch00_l[2];
+    int reg_ch20_l[2];
+    int reg_ch20_l2[2];
+    int reg_ch28_l[2];
+    int reg_ch28_l2[2];
+    int reg_ch30_l[2];
+    int reg_ch30new_l[2];
+    int reg_ch38_l[2];
+    int reg_ch38new_l[2];
+
+    int reg_alg[2];
+
+    uint64_t reg_ch_cell[8];
+    uint64_t reg_ch_bus;
+    uint64_t reg_op1_cell[16];
+    uint64_t reg_op2_cell[16];
+
 } ym2141_t;
 
