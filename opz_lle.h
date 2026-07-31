@@ -150,6 +150,9 @@ typedef struct {
     int reg_unksel1;
     int reg_unksel2;
 
+    int reg_kon[4][2];
+    int reg_kon_match;
+
     int reg_ch00_l[2];
     int reg_ch20_l[2];
     int reg_ch20_l2[2];
@@ -159,13 +162,66 @@ typedef struct {
     int reg_ch30new_l[2];
     int reg_ch38_l[2];
     int reg_ch38new_l[2];
+    int reg_op40_l[2];
+    int reg_op40new_l[2];
+    int reg_op60_l[2];
+    int reg_op80_l[2];
+    int reg_opa0_l[2];
+    int reg_opc0_l[2];
+    int reg_opc0new_l[2];
 
     int reg_alg[2];
 
     uint64_t reg_ch_cell[8];
     uint64_t reg_ch_bus;
-    uint64_t reg_op1_cell[16];
-    uint64_t reg_op2_cell[16];
+    uint64_t reg_op1_cell[2][16];
+    uint64_t reg_op1_bus[2];
+    uint64_t reg_op1_bus_l[2];
+    uint64_t reg_op2_cell[2][16];
+    uint64_t reg_op2_bus[2];
+    uint64_t reg_op2_bus_l[2];
+
+    int lfo_subcnt[2];
+    int lfo_subcnt_of[3];
+    int lfo_sync[2];
+    int lfo_test;
+    int lfo_sync2[2];
+
+    int lfo1_cnt1[2];
+    int lfo1_cnt1_of_l;
+    int lfo1_subcnt_of;
+    int lfo1_cnt1_load[4];
+    int lfo1_freq_write[3];
+    int lfo1_cnt1_rst;
+    int lfo1_cnt1_h[2];
+    int lfo1_cnt1_of_h;
+    int lfo1_cnt1_load_val_hi;
+    int lfo1_inc[2];
+    int lfo1_cnt1_of_h_lock;
+    int lfo1_cnt1_of_h_latch;
+    int lfo1_cnt2_inc;
+    int lfo1_cnt2[2];
+    int lfo1_cnt2_of[2];
+    int lfo1_bcnt[2];
+    int lfo1_premul[2];
+    int lfo1_bit;
+    int lfo1_out_shifter[2];
+    int lfo1_sum_c_out;
+    int lfo1_sum_c_in;
+    int lfo1_wave1;
+    int lfo1_wave2;
+    int lfo1_wave3;
+    int lfo1_sel;
+    int lfo1_inc_lock;
+    int lfo1_sign_saw;
+    int lfo1_sign_saw_l;
+    int lfo1_sign_trig;
+    int lfo1_shifter[2];
+    int lfo1_sum2_c_out[2];
+    int lfo1_cnt3_sync[2];
+    int lfo1_cnt3_inc[2];
+    int lfo1_cnt3[2];
+    int lfo1_bb;
 
 } ym2141_t;
 
