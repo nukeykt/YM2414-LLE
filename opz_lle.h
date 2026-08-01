@@ -12,6 +12,47 @@ typedef struct {
 } ym2414_input_t;
 
 typedef struct {
+    int cnt1[2];
+    int cnt1_of_l;
+    int subcnt_of;
+    int cnt1_load[4];
+    int freq_write[3];
+    int cnt1_rst;
+    int cnt1_h[2];
+    int cnt1_of_h;
+    int cnt1_load_val_hi;
+    int inc[2];
+    int cnt1_of_h_lock;
+    int cnt1_of_h_latch;
+    int cnt2_inc;
+    int cnt2[2];
+    int cnt2_of[2];
+    int bcnt[2];
+    int premul[2];
+    int bit;
+    int out_shifter[2];
+    int sum_c_out;
+    int sum_c_in;
+    int wave1;
+    int wave2;
+    int wave3;
+    int sel;
+    int inc_lock;
+    int sign_saw;
+    int sign_saw_l;
+    int sign_trig;
+    int shifter[2];
+    int sum2_c_out[2];
+    int cnt3_sync[2];
+    int cnt3_inc[2];
+    int cnt3[2];
+    int bb;
+    int pm;
+    int pm_sign;
+    int am;
+} ym2414_lfo_t;
+
+typedef struct {
     ym2414_input_t input;
 
     int o_sy;
@@ -187,41 +228,6 @@ typedef struct {
     int lfo_test;
     int lfo_sync2[2];
 
-    int lfo1_cnt1[2];
-    int lfo1_cnt1_of_l;
-    int lfo1_subcnt_of;
-    int lfo1_cnt1_load[4];
-    int lfo1_freq_write[3];
-    int lfo1_cnt1_rst;
-    int lfo1_cnt1_h[2];
-    int lfo1_cnt1_of_h;
-    int lfo1_cnt1_load_val_hi;
-    int lfo1_inc[2];
-    int lfo1_cnt1_of_h_lock;
-    int lfo1_cnt1_of_h_latch;
-    int lfo1_cnt2_inc;
-    int lfo1_cnt2[2];
-    int lfo1_cnt2_of[2];
-    int lfo1_bcnt[2];
-    int lfo1_premul[2];
-    int lfo1_bit;
-    int lfo1_out_shifter[2];
-    int lfo1_sum_c_out;
-    int lfo1_sum_c_in;
-    int lfo1_wave1;
-    int lfo1_wave2;
-    int lfo1_wave3;
-    int lfo1_sel;
-    int lfo1_inc_lock;
-    int lfo1_sign_saw;
-    int lfo1_sign_saw_l;
-    int lfo1_sign_trig;
-    int lfo1_shifter[2];
-    int lfo1_sum2_c_out[2];
-    int lfo1_cnt3_sync[2];
-    int lfo1_cnt3_inc[2];
-    int lfo1_cnt3[2];
-    int lfo1_bb;
-
+    ym2414_lfo_t lfo1, lfo2;
 } ym2141_t;
 
