@@ -48,6 +48,8 @@ typedef struct {
     int cnt3[2];
     int bb;
     int pm;
+    int pmd_zero;
+    int pm_out;
     int pm_sign;
     int am;
 } ym2414_lfo_t;
@@ -227,7 +229,33 @@ typedef struct {
     int lfo_sync[2];
     int lfo_test;
     int lfo_sync2[2];
+    int lfo_pmsel[2];
 
     ym2414_lfo_t lfo1, lfo2;
+
+    int reg_30_0_l[2];
+    int reg_30_1_l[2];
+
+    int freq_kc[8];
+    int freq_kf[5];
+    int freq_km;
+    int freq_kc_add_sign;
+    int freq_kc_add_c;
+    int freq_kc_add;
+    int freq_kc_clip_h[2];
+    int freq_kc_clip_l[2];
+    int freq_lfo_pm;
+    int freq_lfo_pms[4];
+    int freq_lfo_sign[4];
+    int freq_lfo_add;
+    int freq_lfo_add_shift;
+    int freq_lfo_add_shift_h;
+    int freq_kc_lfo_suml[4];
+    int freq_kc_lfo_sumlof;
+    int freq_kc_lfo_sumh[2];
+    int freq_kc_lfo_sumh_add;
+    int freq_kc_lfo_sumh_sub;
+    int freq_kc_ch;
+    int freq_kc_cl;
 } ym2141_t;
 

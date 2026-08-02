@@ -3,7 +3,7 @@
 #include "opz_lle.h"
 
 
-static void LFO_Clock(ym2141_t* chip, int hclk1, int hlck2, int ic_async, ym2414_lfo_t* lfo, int which) {
+static void LFO_Clock(ym2141_t* chip, int hclk1, int hclk2, int ic_async, ym2414_lfo_t* lfo, int which) {
     int* whichfreq = which ? chip->reg_lfo_freq : chip->reg_16;
     if (hclk1) {
         int lfrq_h = whichfreq[1] >> 4;
@@ -209,7 +209,11 @@ static void LFO_Clock(ym2141_t* chip, int hclk1, int hlck2, int ic_async, ym2414
         lfo->sign_saw_l = lfo->sign_saw;
 
         lfo->bb = lfo_sel ? lfo->sign_saw : (!lfo->sign_trig || whichwave != 2);
+
+        lfo->pmd_zero = whichpmd == 0;
+        lfo->pm_out = lfo->pmd_zero ? 0 : lfo->pm;
     }
+
 }
 
 void OPZLLE_Clock(ym2141_t* chip, int clk) {
@@ -799,6 +803,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         } else {
             chip->reg_ch20_l[0] = chip->reg_ch20_l2[1];
         }
+        chip->reg_ch20_l2[0] = (chip->reg_ch_bus >> 16) & 255;
 
         int match28 = chip->ic_sync || (chip->reg_match28 && (!chip->reg_unkmode || unkaddr || !chip->reg_unksel2));
         if (match28 || ic_async) {
@@ -926,6 +931,10 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
 
         chip->reg_op1_bus_l[0] = chip->reg_op1_bus[1] & 0x3fffff;
         chip->reg_op2_bus_l[0] = chip->reg_op2_bus[1];
+
+
+        chip->reg_30_0_l[0] = (chip->reg_30_0_l[1] << 1) | (chip->reg_ch30new_l[1] & 1);
+        chip->reg_30_1_l[0] = (chip->reg_ch_bus >> 45) & 1;
     }
     if (hclk2) {
         chip->reg_data_valid[1] = chip->reg_data_valid[0];
@@ -979,6 +988,9 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->reg_match20_l[1] = chip->reg_match20_l[0];
 
         chip->reg_alg[1] = chip->reg_alg[0];
+
+        chip->reg_30_0_l[1] = chip->reg_30_0_l[0];
+        chip->reg_30_1_l[1] = chip->reg_30_1_l[0];
     }
 
     if (hclk1) {
@@ -1030,6 +1042,8 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->lfo2.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data1 & 32) != 0);
         chip->lfo1.freq_write[0] = write1_en && chip->reg_write_18[1];
         chip->lfo2.freq_write[0] = write1_en && chip->reg_write_16[1];
+
+        chip->lfo_pmsel[0] = (chip->reg_ch38new_l[1] >> 2) & 1;
     }
     if (hclk2) {
         chip->lfo_sync[0] = (chip->lfo_sync[1] << 1) | chip->fsm_o16;
@@ -1039,9 +1053,136 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->lfo_bcnt_rst = chip->fsm_o16 && chip->lfo_subcnt[0] == 2;
 
         chip->lfo2.cnt3_sync[1] = chip->lfo1.cnt3_sync[0];
+
+        chip->lfo_pmsel[1] = chip->lfo_pmsel[0];
     }
 
     LFO_Clock(chip, hclk1, hclk2, ic_async, &chip->lfo1, 0);
     LFO_Clock(chip, hclk1, hclk2, ic_async, &chip->lfo2, 1);
+
+    if (hclk1) {
+        chip->freq_kc[0] = (chip->reg_ch_bus >> 24) & 127;
+        chip->freq_kc[2] = chip->freq_kc[1];
+        chip->freq_kf[0] = chip->reg_ch30_l[1];
+        chip->freq_kf[2] = chip->freq_kf[1];
+        chip->freq_lfo_pms[0] = (chip->reg_ch38_l[1] >> 2) & 7;
+        chip->freq_lfo_pms[2] = chip->freq_lfo_pms[1];
+
+        chip->freq_km = 0;
+        if ((chip->reg_a[1] & 4) == 0) {
+            chip->freq_km = (chip->reg_30_1_l[1] << 1) | ((chip->reg_30_0_l[1] >> 7) & 1);
+        }
+        int kc = chip->freq_kc[3] + chip->freq_kc_add + chip->freq_kc_add_c;
+        chip->freq_kc[4] = kc & 127;
+
+        chip->freq_kc_clip_h[0] = (kc & 128) && !chip->freq_kc_add_sign;
+        chip->freq_kc_clip_l[0] = !(kc & 128) && chip->freq_kc_add_sign;
+
+        chip->freq_kc[6] = chip->freq_kc_clip_h[1] ? 0x7f : (chip->freq_kc_clip_l[1] ? 0 : chip->freq_kc[5]);
+
+
+        chip->freq_lfo_pm = chip->lfo_pmsel[1] ? chip->lfo2.pm_out : chip->lfo1.pm_out;
+
+        int lfo_add = 0;
+        int pms = chip->freq_lfo_pms[3];
+        if (pms)
+        {
+            if (pms < 6)
+                lfo_add = ((chip->freq_lfo_add & 127) << pms) >> 6;
+            else
+                lfo_add = (chip->freq_lfo_add << pms) >> 5;
+        }
+        chip->freq_lfo_sign[1] = chip->freq_lfo_sign[0];
+        chip->freq_lfo_sign[3] = chip->freq_lfo_sign[2];
+        if (chip->freq_lfo_sign[0]) {
+            lfo_add ^= 0x1fff;
+        }
+        chip->freq_lfo_add_shift = lfo_add;
+
+        chip->freq_kc_lfo_suml[1] = chip->freq_kc_lfo_suml[0];
+
+        int kc_lfo_h = (chip->freq_kc[7] & 3) + (chip->freq_lfo_add_shift_h & 3) + chip->freq_kc_lfo_sumlof;
+        int of2 = (kc_lfo_h >> 2) & 1;
+        kc_lfo_h += (chip->freq_kc[7] & 124) + (chip->freq_lfo_add_shift_h & 124);
+
+        chip->freq_kc_lfo_sumh[0] = kc_lfo_h & 127;
+        int of = (kc_lfo_h >> 7) & 1;
+        chip->freq_kc_ch = of && !chip->freq_lfo_sign[2];
+        chip->freq_kc_cl = !of && chip->freq_lfo_sign[2];
+
+        chip->freq_kc_lfo_sumh_add = !chip->freq_lfo_sign[3] && (of2 || (kc_lfo_h & 3) == 3);
+        chip->freq_kc_lfo_sumh_sub = !of2 && chip->freq_lfo_sign[3] && (chip->freq_lfo_add_shift_h & 3) != 0;
+    }
+    if (hclk2) {
+        chip->freq_kc[1] = chip->freq_kc[0];
+        chip->freq_kc[3] = chip->freq_kc[2];
+        chip->freq_kc[5] = chip->freq_kc[4];
+        chip->freq_kc[7] = chip->freq_kc[6];
+        chip->freq_kf[1] = chip->freq_kf[0];
+        chip->freq_kf[3] = chip->freq_kf[2];
+        chip->freq_lfo_pms[1] = chip->freq_lfo_pms[0];
+
+        int km0 = chip->freq_km & 1;
+        int km1 = (chip->freq_km >> 1) & 1;
+        int w1 = (!km0 && !km1) || (km0 && km1);
+        int kc = chip->freq_kc[2];
+
+        int w2 = !w1 || (km0 && (kc & 1));// !((w1 && !(kc & 1)) || (w1 && !km0));
+        chip->freq_kc_add_sign = km1;
+        chip->freq_kc_add_c = (kc & 2) != 0 && (km0 || km1); //!((!km0 && !km1) || !(kc & 2));
+        chip->freq_kc_add = ((km0 && km1) << 1) | w2;
+        if (km1) {
+            chip->freq_kc_add |= 0x7c;
+        }
+        // 01 -> add 1 + kc1
+        // 10 -> -3 + kc1
+        // 11 -> -2 + kc0 + kc1
+        
+        // 0  1 -d -e 
+        // 1  2 -e  0
+        // 2  4  0  1
+        // 4  5  1  2
+        // 5  6  2  4
+        // 6  8  4  5
+        // 8  9  5  6
+        // 9  a  6  8
+        // a  c  8  9
+        // c  d  9  a
+        // d  e  a  c
+        // e +0  c  d
+
+
+        chip->freq_kc_clip_h[1] = chip->freq_kc_clip_h[0];
+        chip->freq_kc_clip_l[1] = chip->freq_kc_clip_l[0];
+
+        int lfo_pm_out = chip->freq_lfo_pm;
+
+        int pms = chip->freq_lfo_pms[2];
+        chip->freq_lfo_pms[3] = pms;
+        chip->freq_lfo_sign[0] = pms != 0 && (lfo_pm_out & 128) != 0;
+        chip->freq_lfo_sign[2] = chip->freq_lfo_sign[1];
+
+        int ps7 = pms == 7;
+        int hi = ps7 ? (lfo_pm_out >> 4) & 7 : (lfo_pm_out >> 5) & 3;
+        int hi2 = (hi >> 2) & 1;
+        int add = ((hi & 6) != 0 && pms == 7) || (pms >= 6 && (hi & 3) == 3);
+
+        int pm_sum = hi + hi2 + add;
+        int lfo_add2 = ps7 ? pm_sum & 15 : ((pm_sum & 7) << 1) | ((lfo_pm_out >> 4) & 1);
+        chip->freq_lfo_add = (lfo_add2 << 4) | (lfo_pm_out & 15);
+
+        chip->freq_lfo_add_shift_h = chip->freq_lfo_add_shift >> 6;
+
+        int suml = chip->freq_kf[4] + (chip->freq_lfo_add_shift & 63) + chip->freq_lfo_sign[1];
+        chip->freq_kc_lfo_sumlof[0] = (suml >> 6) & 1;
+        chip->freq_kc_lfo_suml[0] = suml & 63;
+        chip->freq_kc_lfo_suml[2] = chip->freq_kc_lfo_suml[1];
+
+        int sumh = chip->freq_kc_lfo_sumh[0] + chip->freq_kc_lfo_sumh_add;
+        if (chip->freq_kc_lfo_sumh_sub) {
+            sumh += 127;
+        }
+
+    }
 }
 
