@@ -1085,7 +1085,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         reg_op1_in |= (uint64_t)chip->reg_op40_l[1];
         reg_op1_in |= (uint64_t)chip->reg_op40new_l[1] << 7;
         reg_op1_in |= (uint64_t)chip->reg_op60_l[1] << 14;
-        reg_op1_in |= (uint64_t)x << 22;
+        reg_op1_in |= (uint64_t)chip->ramp_tl_cell_in << 22;
 
         uint64_t reg_op2_in = 0;
         reg_op2_in |= (uint64_t)chip->reg_op80_l[1];
@@ -1680,6 +1680,47 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->pg_dbg[1] = chip->pg_dbg[0];
 
         chip->pg_out[1] = chip->pg_out[0];
+    }
+
+    if (hclk1) {
+        int ramp = chip->reg_ch00_l[1];
+        int match = ramp == chip->ramp_cnt[1][7];
+
+        int step = chip->fsm_o10[1];
+        int rst = ic_async || (step && match);
+
+        chip->ramp_cnt[0][0] = rst ? 0 : (chip->ramp_cnt[7] + step);
+        memcpy(&chip->ramp_cnt[0][1], &chip->ramp_cnt[1][0], 7 * sizeof(uint8_t));
+        chip->ramp_step[0] = match;
+
+        chip->ramp_tl_reg[0] = chip->reg_op60_l[1];
+        chip->ramp_tl_reg[2] = chip->ramp_tl_reg[1];
+
+        chip->ramp_tl_cell_out = (chip->reg_op1_bus_l[1] >> 22) & 1023;
+
+        int of = (chip->ramp_tl_cmp >> 10) & 1;
+
+        chip->ramp_tl_add1 = of && chip->ramp_step[1];
+        chip->ramp_tl_add2 = !of && (chip->ramp_tl_cmp & 1023) != 0 && chip->ramp_step[1];
+
+        chip->ramp_tl_out_l = chip->ramp_tl_out;
+    }
+    if (hclk2) {
+        memcpy(&chip->ramp_cnt[1][0], &chip->ramp_cnt[0][0], 8 * sizeof(uint8_t));
+        chip->ramp_step[1] = chip->ramp_step[0];
+
+        chip->ramp_tl_reg[1] = chip->ramp_tl_reg[0];
+        
+        chip->ramp_tl_out = chip->ramp_tl_cell_out;
+
+        chip->ramp_tl_cmp = (chip->ramp_tl_cell_out ^ 1023) + ((chip->ramp_tl_reg[0] & 127) << 3);
+
+        int sum = chip->ramp_tl_out_l + chip->ramp_tl_add1;
+        if (chip->ramp_tl_add2) {
+            sum += 1023;
+        }
+
+        chip->ramp_tl_cell_in = (chip->ramp_tl_reg[2] & 128) != 0 ? (sum & 1023) : ((chip->ramp_tl_reg[2] & 127) << 3);
     }
 }
 

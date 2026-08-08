@@ -308,5 +308,17 @@ typedef struct {
     int pg_dbgload;
     int pg_dbg[2];
     int pg_out[3];
+
+    uint8_t ramp_cnt[2][8];
+    int ramp_step[2];
+
+    int ramp_tl_reg[3];
+    int ramp_tl_cell_in;
+    int ramp_tl_cell_out;
+    int ramp_tl_out;
+    int ramp_tl_cmp;
+    int ramp_tl_add1;
+    int ramp_tl_add2;
+    int ramp_tl_out_l;
 } ym2141_t;
 
