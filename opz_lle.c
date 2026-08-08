@@ -1372,8 +1372,8 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
 
         chip->freq_fnum = (fnumh << 5) | chip->freq_fnum_l;
 
-        chip->freq_block[0] = (kcf >> 10) & 7;
-        chip->freq_block[2] = chip->freq_block[1];
+        chip->freq_kcode[0] = (kcf >> 8) & 31;
+        chip->freq_kcode[2] = chip->freq_kcode[1];
     }
     if (hclk2) {
         chip->freq_kc[1] = chip->freq_kc[0];
@@ -1510,8 +1510,176 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->freq_fnum_l = freq_sum_l & 31;
         chip->freq_fnum_l_of = (freq_sum_l >> 5) & 1;
 
-        chip->freq_block[1] = chip->freq_block[0];
-        chip->freq_block[3] = chip->freq_block[2];
+        chip->freq_kcode[1] = chip->freq_kcode[0];
+        chip->freq_kcode[3] = chip->freq_kcode[2];
+    }
+
+    if (hclk1) {
+
+        chip->pg_fix[0] = (chip->reg_op80_l[1] >> 5) & 1;
+        chip->pg_fix[2] = chip->pg_fix[1];
+
+        chip->pg_shift[1] = chip->pg_shift[0];
+
+        chip->pg_dt1 = (chip->reg_op40_l[1] >> 4) & 7;
+
+        chip->pg_block = chip->freq_kcode[3] >> 2;
+        chip->dt_note[0] = chip->freq_kcode[3] & 3;
+        chip->dt_note[2] = chip->dt_note[1];
+        chip->dt_sign[1] = chip->dt_sign[0];
+
+        chip->dt_sum = chip->dt_add1 + chip->dt_add2 + 1;
+
+        chip->dt_enabled2 = chip->dt_enabled && !chip->pg_fix[1];
+
+        chip->pg_freqdt[0] = (chip->pg_freq + chip->pg_dt_add) & 0x1ffff;
+        chip->pg_freqdt[2] = chip->pg_freqdt[1];
+
+        chip->pg_multi1[0] = chip->reg_op40_l[1] & 15;
+        chip->pg_multi1[2] = chip->pg_multi1[1];
+        chip->pg_multi1[4] = chip->pg_multi1[3];
+        chip->pg_multi1[6] = chip->pg_multi1[5];
+
+        chip->pg_multi2[0] = chip->reg_op40new_l[1] & 15;
+        chip->pg_multi2[2] = chip->pg_multi2[1];
+        chip->pg_multi2[4] = chip->pg_multi2[3];
+        chip->pg_multi2[6] = chip->pg_multi2[5];
+
+        chip->pg_add1[0] = chip->pg_multi1[7] ? chip->pg_freqdt[3] * chip->pg_multi1[7] :
+            (chip->pg_freqdt[3] >> 1);
+        chip->pg_add1[0] &= 0xfffff;
+        chip->pg_add1[2] = chip->pg_add1[1];
+
+        chip->pg_add2[0] = ((chip->pg_multi2[7] * chip->pg_freqdt[3]) & 0xfffff) >> 4;
+        chip->pg_add2[2] = chip->pg_add2[1];
+
+        chip->pg_reset[0] = (chip->pg_reset[1] << 1) | x;
+
+        chip->pg_add[0] = (chip->pg_reset[1] & 1) != 0 ? 0 : (chip->pg_add1[3] + chip->pg_add2[3]) & 0xfffff;
+
+        chip->pg_phase_l[0] = chip->pg_bus[3] ^ 0xfffff;
+
+        int phase_sum = ((chip->reg_test[1] & 8) != 0 || (chip->pg_reset & 2) != 0) ? 0 : chip->pg_phase_l[1];
+        phase_sum = (phase_sum + chip->pg_add[1]) & 0xfffff;
+
+        chip->pg_phase_l2[0] = phase_sum;
+        chip->pg_phase_l2[2] = chip->pg_phase_l2[1];
+        chip->pg_phase_l2[4] = chip->pg_phase_l2[3];
+
+        chip->pg_cell_sel[0] = (chip->pg_cell_sel[1] << 1) | chip->fsm_o9[1];
+
+        int i;
+        for (i = 0; i < 8; i++) {
+            if (chip->pg_cell_sel[1] & (1 << i)) {
+                chip->pg_bus[0] |= chip->pg_cells[0][i];
+                chip->pg_bus[1] |= chip->pg_cells[1][i];
+            }
+            if (chip->pg_cell_sel[1] & (512 << i)) {
+                chip->pg_bus[2] |= chip->pg_cells[2][i];
+                chip->pg_bus[3] |= chip->pg_cells[3][i];
+            }
+        }
+        for (i = 0; i < 8; i++) {
+            if (chip->pg_cell_sel[1] & (2 << i)) {
+                chip->pg_cells[0][i] = chip->pg_phase_l2[5] ^ 0xfffff;
+                chip->pg_cells[1][i] = chip->pg_bus[3];
+            }
+            if (chip->pg_cell_sel[1] & (1024 << i)) {
+                chip->pg_cells[2][i] = chip->pg_bus[0];
+                chip->pg_cells[3][i] = chip->pg_bus[1];
+            }
+        }
+
+        chip->pg_dbg[0] = chip->pg_dbg[1] >> 1;
+        if (chip->pg_dbgload) {
+            chip->pg_dbg[0] |= chip->pg_phase_l[1] & 0xff;
+        }
+
+        chip->pg_out[0] = (chip->pg_bus[3] ^ 0xfffff) >> 8;
+        chip->pg_out[2] = chip->pg_out[1];
+        if (chip->reg_a3[1]) {
+            chip->pg_out[2] |= 1023;
+        }
+    }
+    if (hclk2) {
+        chip->pg_fix[1] = chip->pg_fix[0];
+
+        int fnum = chip->pg_fix[2] ? 1200 : chip->freq_fnum;
+        chip->pg_shift[0] = chip->pg_fix[0] ? chip->pg_dt1 : chip->pg_block;
+
+        chip->pg_freq = (fnum << chip->pg_shift[2]) >> 2;
+
+        chip->dt_note[1] = chip->pg_block == 7 ? 0 : chip->dt_note[0];
+        chip->dt_add1 = chip->pg_block;
+        chip->dt_enabled = (chip->pg_dt1 & 3) != 0;
+        if (chip->dt_enabled) {
+            chip->dt_add1 |= 8;
+        }
+        chip->dt_add2 = 0;
+        if ((chip->pg_dt1 & 3) == 3) {
+            chip->dt_add2 |= 1;
+        }
+        if (chip->pg_dt1 & 2) {
+            chip->dt_add2 |= 2;
+        }
+
+        chip->dt_sign[0] = (chip->pg_dt1 >> 2) & 1;
+
+        int dt_l = ((chip->dt_sum & 1) << 2) | chip->dt_note[2];
+        int dt_h = chip->dt_sum >> 1;
+
+        static const int pg_detune[8] = { 16, 17, 19, 20, 22, 24, 27, 29 };
+
+        int dt_freq = chip->dt_enabled2 ? pg_detune[dt_l] >> (9 - dt_h) : 0;
+
+        if (chip->dt_sign[1]) {
+            dt_freq = -dt_freq;
+        }
+
+        chip->pg_dt_add = dt_freq;
+
+        chip->pg_freqdt[1] = chip->pg_freqdt[0];
+        chip->pg_freqdt[3] = chip->pg_freqdt[2];
+
+        chip->pg_multi1[1] = chip->pg_multi1[0];
+        chip->pg_multi1[3] = chip->pg_multi1[2];
+        chip->pg_multi1[5] = chip->pg_multi1[4];
+        chip->pg_multi1[7] = chip->pg_multi1[6];
+
+        chip->pg_multi2[1] = chip->pg_multi2[0];
+        chip->pg_multi2[3] = chip->pg_multi2[2];
+        chip->pg_multi2[5] = chip->pg_multi2[4];
+        chip->pg_multi2[7] = chip->pg_multi2[6];
+
+        chip->pg_add1[1] = chip->pg_add1[0];
+        chip->pg_add1[3] = chip->pg_add1[2];
+
+        chip->pg_add2[1] = chip->pg_add2[0];
+        chip->pg_add2[3] = chip->pg_add2[2];
+
+        chip->pg_reset[1] = chip->pg_reset[0];
+
+        chip->pg_add[1] = chip->pg_add[0];
+
+        chip->pg_phase_l[1] = chip->pg_phase_l[0];
+
+        chip->pg_phase_l2[1] = chip->pg_phase_l2[0];
+        chip->pg_phase_l2[3] = chip->pg_phase_l2[2];
+        chip->pg_phase_l2[5] = chip->pg_phase_l2[4];
+
+        chip->pg_cell_sel[1] = chip->pg_cell_sel[0];
+
+
+        chip->pg_bus[0] = 0;
+        chip->pg_bus[1] = 0;
+        chip->pg_bus[2] = 0;
+        chip->pg_bus[3] = 0;
+
+        chip->pg_dbgload = chip->fsm_4;
+
+        chip->pg_dbg[1] = chip->pg_dbg[0];
+
+        chip->pg_out[1] = chip->pg_out[0];
     }
 }
 

@@ -278,6 +278,35 @@ typedef struct {
     int freq_fnum_l;
     int freq_fnum_l_of;
     int freq_fnum;
-    int freq_block[4];
+    int freq_kcode[4];
+
+    int pg_fix[3];
+    int pg_shift[2];
+    int pg_block;
+    int pg_dt1;
+    int pg_freq;
+    int pg_dt_add;
+    int dt_sign[2];
+    int dt_add1;
+    int dt_add2;
+    int dt_enabled;
+    int dt_enabled2;
+    int dt_sum;
+    int dt_note[3];
+    int pg_freqdt[4];
+    int pg_multi1[8];
+    int pg_multi2[8];
+    int pg_add1[4];
+    int pg_add2[4];
+    int pg_reset[2];
+    int pg_add[2];
+    int pg_phase_l[2];
+    int pg_phase_l2[6];
+    int pg_cell_sel[2];
+    int pg_bus[4];
+    int pg_cells[4][8];
+    int pg_dbgload;
+    int pg_dbg[2];
+    int pg_out[3];
 } ym2141_t;
 
