@@ -388,6 +388,18 @@ typedef struct {
     int eg_level_l[4];
     int eg_level_add1;
     int eg_level_add2;
+    int eg_lev_shift;
+    int eg_rev_sel;
+    int eg_level_shifted[2];
+    int eg_o17[3];
+    int eg_o18[3];
+    int eg_o19[3];
+    int eg_unk_bit[2];
+    int eg_int;
+    int eg_rev1;
+    int eg_rev2;
+    int eg_rev_l1[2];
+    int eg_rev_l2[2];
 
 } ym2141_t;
 

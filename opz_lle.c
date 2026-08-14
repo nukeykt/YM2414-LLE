@@ -1073,16 +1073,16 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         }
 
         if ((chip->reg_matchc0 && bank) || ic_async) {
-            chip->reg_opc0new_l[0] = chip->reg_data[1] & 31;
-            chip->reg_opc0new_l[0] |= (chip->reg_data[1] >> 1) & 0x60;
+            chip->reg_opc0new_l[0] = chip->reg_data[1] & 15;
+            chip->reg_opc0new_l[0] |= (chip->reg_data[1] >> 2) & 0x30;
         } else {
-            chip->reg_opc0new_l[0] = (chip->reg_op2_bus_l[1] >> 23) & 127;
+            chip->reg_opc0new_l[0] = (chip->reg_op2_bus_l[1] >> 23) & 63;
         }
 
         if (chip->reg_matche0 || ic_async) {
             chip->reg_ope0_l[0] = chip->reg_data[1];
         } else {
-            chip->reg_ope0_l[0] = (chip->reg_op2_bus_l[1] >> 30) & 0xff;
+            chip->reg_ope0_l[0] = (chip->reg_op2_bus_l[1] >> 29) & 0xff;
         }
 
         for (i = 0; i < 16; i++) {
@@ -1105,7 +1105,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         reg_op2_in |= (uint64_t)chip->reg_opa0_l[1] << 8;
         reg_op2_in |= (uint64_t)chip->reg_opc0_l[1] << 16;
         reg_op2_in |= (uint64_t)chip->reg_opc0new_l[1] << 23;
-        reg_op2_in |= (uint64_t)chip->reg_ope0[1] << 30;
+        reg_op2_in |= (uint64_t)chip->reg_ope0[1] << 29;
 
         for (i = 0; i < 16; i++) {
             if (chip->reg_op_sel[1] & (2 << i)) {
@@ -1575,7 +1575,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
 
         chip->pg_phase_l[0] = chip->pg_bus[3] ^ 0xfffff;
 
-        int phase_sum = ((chip->reg_test[1] & 8) != 0 || (chip->pg_reset & 2) != 0) ? 0 : chip->pg_phase_l[1];
+        int phase_sum = ((chip->reg_test[1] & 8) != 0 || (chip->pg_reset[1] & 2) != 0) ? 0 : chip->pg_phase_l[1];
         phase_sum = (phase_sum + chip->pg_add[1]) & 0xfffff;
 
         chip->pg_phase_l2[0] = phase_sum;
@@ -1753,7 +1753,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         int inc = chip->eg_clock[0] && chip->eg_half[1] && (chip->eg_timer_carry[1] || chip->eg_sync2[2]);
         int timer_bit = (chip->eg_timer[1] & 1) + inc;
 
-        int next_bit = !ic_async || y;
+        int next_bit = !ic_async || (timer_bit & 1) != 0;
         chip->eg_timer[0] = (chip->eg_timer[1] >> 1) | (next_bit << 15);
         int masked_bit = next_bit && chip->eg_masking[1];
         chip->eg_timer_masked[0] = (chip->eg_timer_masked[1] >> 1) | (masked_bit << 15);
@@ -1820,7 +1820,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         int rrzero = chip->eg_rr[1] == 0;
 
         int newm = (chip->reg_15[1] & 1) != 0;
-        int reverbsel = !x && !chip->eg_zero_rev[1] && newm && !rrzero && ratesel != 0;
+        int reverbsel = (chip->eg_rev_l2[1] & 32) == 0 && !chip->eg_zero_rev[1] && newm && !rrzero && ratesel != 0;
 
         int rrrate = newm && rrzero ? 11 : chip->eg_rr[1];
 
@@ -1925,6 +1925,37 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         }
 
         chip->eg_level_add2 = inc;
+
+        chip->eg_lev_shift = (chip->reg_opc0new_l[1] >> 4) & 3;
+
+        chip->eg_level_shifted[1] = chip->eg_level_shifted[0];
+
+        chip->eg_rev_sel = chip->reg_opc0new_l[1] >> 3) & 1;
+
+        chip->eg_o17[0] = chip->fsm_o17[1];
+        chip->eg_o18[0] = chip->fsm_o18[1];
+        chip->eg_o19[0] = chip->fsm_o19[1];
+
+        chip->eg_o17[2] = chip->eg_o17[1];
+        chip->eg_o18[2] = chip->eg_o18[1];
+        chip->eg_o19[2] = chip->eg_o19[1];
+
+        chip->eg_unk_bit[0] = chip->eg_unk_bit[1] << 1;
+        if (chip->reg_ch20_l[1] & 64) {
+            chip->eg_unk_bit[0] |= 1;
+        }
+
+        chip->eg_rev_l1[0] = chip->eg_rev_l1[1] << 1;
+        if (chip->eg_kon[0] & 0x80000000) {
+            chip->eg_rev_l1[0] |= 1;
+        }
+        if (!chip->eg_rev1) {
+            chip->eg_rev_l1[0] |= (chip->eg_rev_l2[1] >> 7) & 1;
+        }
+        chip->eg_rev_l2[0] = chip->eg_rev_l2[1] << 1;
+        if (!chip->eg_rev2) {
+            chip->eg_rev_l2[0] |= (chip->eg_rev_l1[1] >> 7) & 1;
+        }
     }
     if (hclk2) {
         chip->eg_sync[1] = chip->eg_sync[0];
@@ -2109,6 +2140,47 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->eg_level_l[3] = chip->eg_level_l[2];
 
         chip->eg_level_next = (chip->eg_level_add1 + chip->eg_level_add2) & 4095;
+
+        int lev_shifted = 0;
+        if ((chip->reg_test[0] & 32) == 0) {
+            switch (chip->eg_lev_shift) {
+                case 0:
+                    lev_shifted = chip->eg_level_l[0];
+                    break;
+                case 1:
+                    lev_shifted = chip->eg_level_l[0] >> 1;
+                    break;
+                case 2:
+                    lev_shifted = chip->eg_level_l[0] >> 2;
+                    break;
+                case 3:
+                    lev_shifted = chip->eg_level_l[0] >> 3;
+                    break;
+            }
+        }
+
+        chip->eg_level_shifted[0] = lev_shifted;
+
+        int int_threshold = (lev_shifted & 2048) != 0 && (lev_shifted & (1024 + 512)) != 0;
+        int rev_threshold_n = (lev_shifted & (2048+1024)) == 0 && ((lev_shifted & 512) == 0 || ((lev_shifted & 256) == 0 && chip->eg_rev_sel));
+
+        chip->eg_o17[1] = chip->eg_o17[0];
+        chip->eg_o18[1] = chip->eg_o18[0];
+        chip->eg_o19[1] = chip->eg_o19[0];
+
+        chip->eg_unk_bit[1] = chip->eg_unk_bit[0];
+
+        int special = (chip->reg_15[0] & 3) == 3;
+
+        chip->eg_int = (chip->eg_unk_bit[0] & 8) != 0 && int_threshold && ((chip->eg_o18[2] && special) || chip->eg_o19[2]);
+
+        int notattack = chip->eg_level_l[2] != eg_state_attack;
+
+        chip->eg_rev1 = notattack && !rev_threshold_n && ((chip->eg_o18[2] && special) || chip->eg_o19[2]);
+        chip->eg_rev2 = notattack && !rev_threshold_n && ((chip->eg_o17[2] && special) || (chip->eg_o19[2] && !special));
+
+        chip->eg_rev_l1[1] = chip->eg_rev_l1[0];
+        chip->eg_rev_l2[1] = chip->eg_rev_l2[0];
     }
 }
 
