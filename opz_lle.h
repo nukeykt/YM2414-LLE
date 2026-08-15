@@ -231,6 +231,10 @@ typedef struct {
     int lfo_test;
     int lfo_sync2[2];
     int lfo_pmsel[2];
+    int lfo_amsel[2];
+    int lfo_amen[2];
+    int lfo_ams[2];
+    int lfo_amse[2];
 
     ym2414_lfo_t lfo1, lfo2;
 
@@ -380,7 +384,7 @@ typedef struct {
     int eg_state_next;
     int eg_state_l[5];
     int eg_okeyn_l[2];
-    uint64_t eg_kon[2];
+    int eg_kon[2];
     int eg_linear;
     int eg_exp;
     int eg_mute;
@@ -390,16 +394,53 @@ typedef struct {
     int eg_level_add2;
     int eg_lev_shift;
     int eg_rev_sel;
-    int eg_level_shifted[2];
+    int eg_level_shifted[3];
     int eg_o17[3];
     int eg_o18[3];
     int eg_o19[3];
-    int eg_unk_bit[2];
+    int eg_int_en[2];
     int eg_int;
     int eg_rev1;
     int eg_rev2;
     int eg_rev_l1[2];
     int eg_rev_l2[2];
+    int eg_lfo[2];
+    int eg_lfo_sh[2];
+    int eg_lev_lfo_l[2];
+    int eg_lev_lfo_h[2];
+    int eg_lev_lfo_c;
+    int eg_lev_lfo_c2[3];
+    int eg_tl[2];
+    int eg_trem_shift[2];
+    int eg_tl_trem[3];
+    int eg_tl_trem_c1;
+    int eg_sum_c1;
+    int eg_sum_c2;
+    int eg_sum[2];
+    int eg_sum_clip;
+    int eg_dbg_load[2];
+    int eg_dbg_shifter[2];
+
+    int trem_subcnt[2];
+    int trem_subcnt_inc;
+    int trem_subcnt_sel1;
+    int trem_subcnt_sel2;
+    int trem_subcnt_sel3;
+    int trem_ctrl1[2];
+    int trem_ctrl2[2];
+    unsigned int trem_shifter[2];
+    int trem_adder_c[2];
+    int trem_state[4][2];
+    int trem_fsm_19_l[2];
+    int trem_shifter2[2];
+    int trem_cmp_adder_c[2];
+    int trem_fsm_9[2];
+    int trem_fsm_31_l;
+    int trem_fsm_9_l;
+    int trem_latch_a;
+    int trem_latch_b;
+    int trem_sel[2];
+    int trem_sens[2];
 
 } ym2141_t;
 

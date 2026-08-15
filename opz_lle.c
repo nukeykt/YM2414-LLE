@@ -381,8 +381,8 @@ static void LFO_Clock(ym2141_t* chip, int hclk1, int hclk2, int ic_async, ym2414
             }
 
             int am_load = !lfo_sel && (lfo->bcnt[0] & 7) == 7;
-            if (pm_load) {
-                lfo->am = (lfo->out_shifter[1] >> 8) & 255;
+            if (am_load) {
+                lfo->am = (lfo->out_shifter[1] >> 4) & 4095;
             }
         }
 
@@ -740,7 +740,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->fsm_8[0] = cnt == 7;
         chip->fsm_13[0] = cnt == 12;
         chip->fsm_14 = cnt == 14;
-        chip->fsm_19[0] = cnt == 19;
+        chip->fsm_19[0] = cnt == 18;
         chip->fsm_29[0] = cnt == 28;
         chip->fsm_30[0] = cnt == 29;
         chip->fsm_31[0] = cnt == 30;
@@ -1232,6 +1232,19 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->lfo2.freq_write[0] = write1_en && chip->reg_write_16[1];
 
         chip->lfo_pmsel[0] = (chip->reg_ch38new_l[1] >> 2) & 1;
+        chip->lfo_amsel[0] = (chip->reg_ch38new_l[1] >> 0) & 1;
+
+        chip->lfo_amen[0] = chip->lfo_amen[1] << 1;
+        if (chip->reg_op2_bus[1] & (1 << 15)) {
+            chip->lfo_amen[0] |= 1;
+        }
+
+        chip->lfo_ams[0] = (chip->reg_ch_bus >> 46) & 3;
+
+        chip->lfo_amse[0] = 0;
+        if (chip->lfo_amen[1] & 2) {
+            chip->lfo_amse[0] = chip->lfo_ams[1];
+        }
     }
     if (hclk2) {
         chip->lfo_sync[0] = (chip->lfo_sync[1] << 1) | chip->fsm_o16;
@@ -1243,6 +1256,11 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->lfo2.cnt3_sync[1] = chip->lfo1.cnt3_sync[0];
 
         chip->lfo_pmsel[1] = chip->lfo_pmsel[0];
+        chip->lfo_amsel[1] = chip->lfo_amsel[0];
+
+        chip->lfo_amen[1] = chip->lfo_amen[0];
+        chip->lfo_ams[1] = chip->lfo_ams[0];
+        chip->lfo_amse[1] = chip->lfo_amse[0];
     }
 
     LFO_Clock(chip, hclk1, hclk2, ic_async, &chip->lfo1, 0);
@@ -1765,11 +1783,11 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->eg_sync2[1] = chip->eg_sync2[0];
 
 
-        chip->eg_ar[0] = chip->reg_op2_bus_l[1] & 0x1f;
-        chip->eg_d1r[0] = (chip->reg_op2_bus_l[1] >> 8) & 0x1f;
-        chip->eg_d2r[0] = (chip->reg_op2_bus_l[1] >> 16) & 0x1f;
-        chip->eg_rr[0] = (chip->reg_op2_bus_l[1] >> 30) & 0xf;
-        int revrate = (chip->reg_op2_bus_l[1] >> 23) & 7;
+        chip->eg_ar[0] = chip->reg_op2_bus[1] & 0x1f;
+        chip->eg_d1r[0] = (chip->reg_op2_bus[1] >> 8) & 0x1f;
+        chip->eg_d2r[0] = (chip->reg_op2_bus[1] >> 16) & 0x1f;
+        chip->eg_rr[0] = (chip->reg_op2_bus[1] >> 30) & 0xf;
+        int revrate = (chip->reg_op2_bus[1] >> 23) & 7;
         chip->eg_rev[0] = revrate;
         chip->eg_zero_rev[0] = revrate == 0;
 
@@ -1848,7 +1866,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->eg_sl[0] = chip->reg_ope0_l[1] >> 4;
         chip->eg_sl[2] = chip->eg_sl[1];
 
-        chip->eg_ks[0] = (chip->reg_op2_bus_l[1] >> 6) & 3;
+        chip->eg_ks[0] = (chip->reg_op2_bus[1] >> 6) & 3;
         chip->eg_ks[2] = chip->eg_ks[1];
 
         chip->eg_kcode = chip->freq_kcode[1];
@@ -1940,9 +1958,9 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->eg_o18[2] = chip->eg_o18[1];
         chip->eg_o19[2] = chip->eg_o19[1];
 
-        chip->eg_unk_bit[0] = chip->eg_unk_bit[1] << 1;
+        chip->eg_int_en[0] = chip->eg_int_en[1] << 1;
         if (chip->reg_ch20_l[1] & 64) {
-            chip->eg_unk_bit[0] |= 1;
+            chip->eg_int_en[0] |= 1;
         }
 
         chip->eg_rev_l1[0] = chip->eg_rev_l1[1] << 1;
@@ -1955,6 +1973,51 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->eg_rev_l2[0] = chip->eg_rev_l2[1] << 1;
         if (!chip->eg_rev2) {
             chip->eg_rev_l2[0] |= (chip->eg_rev_l1[1] >> 7) & 1;
+        }
+
+        chip->eg_lfo[0] = chip->lfo_amsel[1] ? chip->lfo2.am : chip->lfo1.am;
+
+        int lfo_shift = 0;
+        if (chip->lfo_amse[1]) {
+            lfo_shift = chip->eg_lfo[1] >> (3 - chip->lfo_amse[1]);
+        }
+        chip->eg_lfo_sh[0] = lfo_shift;
+
+        chip->eg_lev_lfo_l[1] = chip->eg_lev_lfo_l[0];
+
+        int eg_lev_lfo_h = chip->eg_lfo_sh[1] + chip->eg_level_shifted[2] + chip->eg_lev_lfo_c;
+        chip->eg_lev_lfo_h[0] = eg_lev_lfo_h & 63;
+        chip->eg_lev_lfo_c2[0] = eg_lev_lfo_h >> 6;
+        chip->eg_lev_lfo_c2[2] = chip->eg_lev_lfo_c2[1];
+
+        chip->eg_tl[0] = chip->ramp_tl_out;
+
+        int trem_shift = 0;
+        if (chip->trem_sens[1]) {
+            int trem = chip->trem_sel[1] ? chip->trem_latch_b : chip->trem_latch_a;
+            trem_shift = trem >> (3 - chip->trem_sens[1]);
+        }
+        chip->eg_trem_shift[0] = trem_shift;
+
+        int trem_tl_h = chip->eg_tl[1] + chip->eg_trem_shift[1] + chip->eg_tl_trem_c1;
+
+        int c2 = trem_tl_h >> 6;
+
+        if (c2) {
+            chip->eg_tl_trem[1] = 0xfff;
+        } else {
+            chip->eg_tl_trem[1] = ((trem_tl_h & 63) << 6) | chip->eg_tl_trem[0];
+        }
+        int eg_sum_h = chip->eg_tl_trem[2] + chip->eg_lev_lfo_h[1] + chip->eg_sum_c1;
+        chip->eg_sum_c2 = eg_sum_h >> 6;
+        chip->eg_sum[1] = ((eg_sum_h & 63) << 6) | chip->eg_sum[0];
+
+        chip->eg_dbg_load[0] = chip->fsm_29[1];
+
+        if (chip->eg_dbg_load[1]) {
+            chip->eg_dbg_shifter[0] = chip->eg_sum_clip;
+        } else {
+            chip->eg_dbg_shifter[0] = chip->eg_dbg_shifter[1] << 1;
         }
     }
     if (hclk2) {
@@ -2160,6 +2223,7 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         }
 
         chip->eg_level_shifted[0] = lev_shifted;
+        chip->eg_level_shifted[2] = chip->eg_level_shifted[1] >> 6;
 
         int int_threshold = (lev_shifted & 2048) != 0 && (lev_shifted & (1024 + 512)) != 0;
         int rev_threshold_n = (lev_shifted & (2048+1024)) == 0 && ((lev_shifted & 512) == 0 || ((lev_shifted & 256) == 0 && chip->eg_rev_sel));
@@ -2168,11 +2232,11 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
         chip->eg_o18[1] = chip->eg_o18[0];
         chip->eg_o19[1] = chip->eg_o19[0];
 
-        chip->eg_unk_bit[1] = chip->eg_unk_bit[0];
+        chip->eg_int_en[1] = chip->eg_int_en[0];
 
         int special = (chip->reg_15[0] & 3) == 3;
 
-        chip->eg_int = (chip->eg_unk_bit[0] & 8) != 0 && int_threshold && ((chip->eg_o18[2] && special) || chip->eg_o19[2]);
+        chip->eg_int = (chip->eg_int_en[0] & 8) != 0 && int_threshold && ((chip->eg_o18[2] && special) || chip->eg_o19[2]);
 
         int notattack = chip->eg_level_l[2] != eg_state_attack;
 
@@ -2181,6 +2245,158 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
 
         chip->eg_rev_l1[1] = chip->eg_rev_l1[0];
         chip->eg_rev_l2[1] = chip->eg_rev_l2[0];
+
+        chip->eg_lfo[1] = chip->eg_lfo[0];
+        chip->eg_lfo_sh[1] = chip->eg_lfo_sh[0] >> 6;
+
+        int eg_lev_lfo_l = (chip->eg_lfo_sh[0] & 63) + (chip->eg_level_shifted[1] & 63);
+        chip->eg_lev_lfo_l[0] = eg_lev_lfo_l & 63;
+        chip->eg_lev_lfo_c = eg_lev_lfo_l >> 6;
+
+        chip->eg_lev_lfo_h[1] = chip->eg_lev_lfo_h[0];
+        chip->eg_lev_lfo_c2[1] = chip->eg_lev_lfo_c2[0];
+
+        int trem_tl_l = (chip->eg_trem_shift[0] & 63) + ((chip->eg_tl[0] & 15) << 2);
+        chip->eg_tl_trem[0] = trem_tl_l & 63;
+
+        chip->eg_tl_trem_c1 = trem_tl_l >> 6;
+
+        chip->eg_tl[1] = chip->eg_tl[0] >> 4;
+        chip->eg_trem_shift[1] = chip->eg_trem_shift[0] >> 6;
+
+        chip->eg_tl_trem[2] = chip->eg_tl_trem[1] >> 6;
+
+        int eg_sum_l = (chip->eg_tl_trem[1] & 63) + chip->eg_lev_lfo_l[1];
+        chip->eg_sum[0] = eg_sum_l & 63;
+        chip->eg_sum_c1 = (eg_sum_l >> 6) & 1;
+
+        if (chip->eg_sum_c2 || chip->eg_lev_lfo_c2[2]) {
+            chip->eg_sum_clip = 4095;
+        } else {
+            chip->eg_sum_clip = chip->eg_sum[1];
+        }
+
+        chip->eg_dbg_load[1] = chip->eg_dbg_load[0];
+    }
+
+    if (hclk1) {
+        chip->trem_subcnt[0] = ic_async ? 0 : (chip->trem_subcnt[1] + chip->trem_subcnt_inc) & 255;
+
+        int reg1c_7 = (chip->reg_1c[1] >> 7) & 1;
+        int reg1e_7 = (chip->reg_1e[1] >> 7) & 1;
+
+        chip->trem_ctrl1[0] = reg1c_7 ? (chip->trem_state[1][1] ? chip->trem_subcnt_sel2 : chip->trem_subcnt_sel3) : chip->trem_subcnt_sel1;
+        chip->trem_ctrl2[0] = reg1e_7 ? (chip->trem_state[0][1] ? chip->trem_subcnt_sel2 : chip->trem_subcnt_sel3) : chip->trem_subcnt_sel1;
+
+        int a = chip->trem_shifter[1] & 1;
+        int c = (!chip->trem_state[0][1] && (chip->trem_fsm_19_l[1] & 2) != 0 && chip->trem_ctrl2[1])
+            || (!chip->trem_state[1][1] && chip->fsm_31[1] && chip->trem_ctrl1[1])
+            || (chip->trem_adder_c[1] && (chip->fsm_o14[1] || chip->fsm_o13[1]));
+        int b = (!chip->trem_state[3][1] && chip->trem_state[1][1] && chip->fsm_o11[1] && chip->trem_ctrl1[1])
+            || (!chip->trem_state[2][1] && chip->trem_state[0][1] && chip->fsm_o15[1] && chip->trem_ctrl2[1]);
+        int adder = a + b + c;
+
+        chip->trem_shifter[0] = (chip->trem_shifter[1] >> 1);
+        chip->trem_shifter[0] |= (adder & 1) << 31;
+        if (chip->fsm_8[1]) {
+            chip->trem_shifter[0] &= ~0x3ff;
+            chip->trem_shifter[0] |= (chip->reg_1c[1] & 127) << 3;
+        }
+
+        chip->trem_shifter2[0] = chip->trem_shifter2[1] >> 1;
+        if (chip->fsm_30[1]) {
+            chip->trem_shifter2[0] &= ~0x3ff;
+            chip->trem_shifter2[0] |= (chip->reg_1e[1] & 127) << 3;
+        }
+
+
+        chip->trem_adder_c[0] = (adder >> 1);
+
+        int cmp_a = !(((chip->trem_shifter[1] & 1) != 0 && chip->fsm_o12[1]) || (chip->fsm_o11[1] && (chip->trem_shifter2[1] & 1) != 0));
+        int cmp_b = (chip->trem_shifter[1] >> 22) & 1;
+        int cmp_c = chip->trem_cmp_adder_c[1] || chip->trem_fsm_9[1] || chip->fsm_31[1];
+        int cmp_adder = cmp_a + cmp_b + cmp_c;
+        int cmp_o = cmp_adder & 1;
+        int cmp_co = cmp_adder >> 1;
+
+        chip->trem_cmp_adder_c[0] = cmp_co;
+
+        if (!cmp_co && chip->trem_fsm_9[1]) {
+            chip->trem_state[0][0] = 0;
+        } else if (cmp_co && chip->trem_fsm_9[1]) {
+            chip->trem_state[0][0] = 1;
+        } else {
+            chip->trem_state[0][0] = chip->trem_state[0][1];
+        }
+        if (!cmp_co && chip->fsm_19[1]) {
+            chip->trem_state[1][0] = 0;
+        } else if (cmp_co && chip->fsm_19[1]) {
+            chip->trem_state[1][0] = 1;
+        } else {
+            chip->trem_state[1][0] = chip->trem_state[1][1];
+        }
+        if (chip->fsm_o11[1] && cmp_o) {
+            chip->trem_state[2][0] = 0;
+        } else if (chip->fsm_31[1] && !cmp_o) {
+            chip->trem_state[2][0] = 1;
+        } else {
+            chip->trem_state[2][0] = chip->trem_state[2][1];
+        }
+        if (chip->fsm_o12[1] && cmp_o) {
+            chip->trem_state[3][0] = 0;
+        } else if (chip->trem_fsm_9[1] && !cmp_o) {
+            chip->trem_state[3][0] = 1;
+        } else {
+            chip->trem_state[3][0] = chip->trem_state[3][1];
+        }
+
+
+        chip->trem_fsm_19_l[0] = (chip->trem_fsm_19_l[1] << 1) | chip->fsm_19[1];
+        chip->trem_fsm_9[0] = chip->fsm_8[1];
+
+        chip->trem_fsm_31_l = chip->fsm_31[1];
+        chip->trem_fsm_9_l = chip->trem_fsm_9[1];
+
+        chip->trem_sel[0] = (chip->reg_ch38new_l[1] >> 1) & 1;
+
+        chip->trem_sens[0] = (reg_opa0_l[1] >> 5) & 3;
+    }
+    if (hclk2) {
+        chip->trem_subcnt[1] = chip->trem_subcnt[0];
+        chip->trem_subcnt_inc = chip->fsm_14;
+
+        chip->trem_subcnt_sel1 = (chip->trem_subcnt[0] & 3) != 0;
+        chip->trem_subcnt_sel2 = (chip->trem_subcnt[0] & 3) == 3;
+        chip->trem_subcnt_sel3 = (chip->trem_subcnt[0] & 31) == 31 && ((chip->trem_subcnt[0] & 32) != 0 || (chip->trem_subcnt[0] & 192) == 192);
+
+        chip->trem_shifter[1] = chip->trem_shifter[0];
+        chip->trem_shifter2[1] = chip->trem_shifter2[0];
+
+        chip->trem_adder_c[1] = chip->trem_adder_c[0];
+
+        chip->trem_state[0][1] = chip->trem_state[0][0];
+        chip->trem_state[1][1] = chip->trem_state[1][0];
+        chip->trem_state[2][1] = chip->trem_state[2][0];
+        chip->trem_state[3][1] = chip->trem_state[3][0];
+
+        chip->trem_fsm_19_l[1] = chip->trem_fsm_19_l[0];
+
+        chip->trem_cmp_adder_c[1] = chip->trem_cmp_adder_c[0];
+        chip->trem_fsm_9[1] = chip->trem_fsm_9[0];
+
+        chip->trem_sel[1] = chip->trem_sel[0];
+        chip->trem_sens[1] = chip->trem_sens[0];
+    }
+
+    if (ic_async) {
+        chip->trem_latch_a = 0;
+        chip->trem_latch_b = 0;
+    }
+    if (chip->fsm_31[1] && !chip->trem_fsm_31_l) {
+        chip->trem_latch_a = (chip->trem_shifter[1] >> 22) & 0x3ff;
+    }
+    if (chip->trem_fsm_9[1] && !chip->trem_fsm_9_l) {
+        chip->trem_latch_b = (chip->trem_shifter[1] >> 22) & 0x3ff;
     }
 }
 
