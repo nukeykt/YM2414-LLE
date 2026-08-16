@@ -2410,7 +2410,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         // 5 - 4-15
         // 6 - 3-14
         // 7 - 2-13
-        int mod = x;
+        int mod = (short)chip->op_modsum[2];
         chip->op_mod_in[0] = (mod >> chip->op_mod_shift[1]) & 4095;
 
         int sh = 0;
@@ -2506,6 +2506,71 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         int corr = (chip->op_sign[1] & 2048) != 0;
         chip->op_value[6] = (chip->op_value[5] + corr) & 65535;
         chip->op_value[8] = chip->op_value[7];
+
+        chip->op_cell_sel[0] = (chip->op_cell_sel[1] << 1) | chip->fsm_o9[1];
+
+        chip->op_cell_in[0] = chip->fsm_alg_o[2] ? chip->op_value[9] : chip->op_cell_bus_l[0][1];
+        chip->op_cell_in[1] = chip->fsm_alg_o[2] ? chip->op_cell_bus_l[0][1] : chip->op_cell_bus_l[1][1];
+        chip->op_cell_in[2] = chip->fsm_alg_o[3] ? chip->op_value[9] : chip->op_cell_bus_l[2][1];
+        chip->op_cell_in[3] = chip->fsm_alg_o[3] ? chip->op_cell_bus_l[2][1] : chip->op_cell_bus_l[3][1];
+
+        for (i = 0; i < 8; i++) {
+            if (chip->op_cell_sel[1] & (1 << i)) {
+                chip->op_cell_bus[0] |= chip->op_cells[0][i];
+                chip->op_cell_bus[1] |= chip->op_cells[1][i];
+                chip->op_cell_bus[2] |= chip->op_cells[2][i];
+                chip->op_cell_bus[3] |= chip->op_cells[3][i];
+            }
+        }
+
+
+        for (i = 0; i < 8; i++) {
+            if (chip->op_cell_sel[1] & (2 << i)) {
+                chip->op_cells[0][i] = chip->op_cell_in[0];
+                chip->op_cells[1][i] = chip->op_cell_in[1];
+                chip->op_cells[2][i] = chip->op_cell_in[2];
+                chip->op_cells[3][i] = chip->op_cell_in[3];
+            }
+        }
+
+        chip->op_cell_bus_l[0][0] = chip->op_cell_bus[0];
+        chip->op_cell_bus_l[1][0] = chip->op_cell_bus[1];
+        chip->op_cell_bus_l[2][0] = chip->op_cell_bus[2];
+        chip->op_cell_bus_l[3][0] = chip->op_cell_bus[3];
+
+        int mod1 = 0;
+        int mod2 = 0;
+        if (chip->fsm_alg_o[5]) {
+            mod1 |= chip->op_cell_bus_l[1][1];
+        }
+        if (chip->fsm_alg_o[6]) {
+            mod1 |= chip->op_value[9];
+        }
+        if (chip->fsm_alg_o[7]) {
+            mod1 |= chip->op_cell_bus_l[3][1];
+        }
+        if (chip->fsm_alg_o[4]) {
+            mod2 |= chip->op_cell_bus_l[0][1];
+        }
+        if (chip->fsm_alg_o[3]) {
+            mod2 |= chip->op_cell_bus_l[2][1];
+        }
+
+        chip->op_mod1[0] = mod1;
+        chip->op_mod2[0] = mod2;
+
+        int sm1 = chip->op_mod1[1];
+        int sm2 = chip->op_mod2[1];
+
+        if (sm1 & 128) {
+            sm1 |= 256;
+        }
+        if (sm2 & 128) {
+            sm2 |= 256;
+        }
+
+        int mod_h = sm1 + sm2 + chip->op_modsum_c;
+        chip->op_modsum[1] = chip->op_modsum[0] | ((mod_h & 511) << 7);
     }
     if (hclk2) {
 
@@ -2581,6 +2646,27 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->op_value[5] = chip->op_value[4];
         chip->op_value[7] = chip->op_value[6];
         chip->op_value[9] = chip->op_value[8];
+
+
+        chip->op_cell_bus[0] = 0;
+        chip->op_cell_bus[1] = 0;
+        chip->op_cell_bus[2] = 0;
+        chip->op_cell_bus[3] = 0;
+
+        chip->op_cell_bus_l[0][1] = chip->op_cell_bus_l[0][0];
+        chip->op_cell_bus_l[1][1] = chip->op_cell_bus_l[1][0];
+        chip->op_cell_bus_l[2][1] = chip->op_cell_bus_l[2][0];
+        chip->op_cell_bus_l[3][1] = chip->op_cell_bus_l[3][0];
+
+        int mod_l = (chip->op_mod1[0] & 255) + (chip->op_mod2[0] & 255);
+
+        chip->op_modsum[0] = (mod_l >> 1) & 127;
+        chip->op_modsum_c = mod_l >> 8;
+
+        chip->op_mod1[1] = chip->op_mod1[0] >> 8;
+        chip->op_mod2[1] = chip->op_mod2[0] >> 8;
+
+        chip->op_modsum[2] = chip->op_modsum[1];
     }
 }
 

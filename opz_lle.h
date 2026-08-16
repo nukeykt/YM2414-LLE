@@ -472,5 +472,15 @@ typedef struct {
     int op_pow[2];
     int op_pow_shifted_l[2];
     int op_value[10];
+    int op_cell_sel[2];
+    int op_cells[4][8];
+    int op_cell_bus[4];
+    int op_cell_in[4];
+    int op_cell_bus_l[4][2];
+    int op_mod1[2];
+    int op_mod2[2];
+    int op_modsum[3];
+    int op_modsum_c;
+
 } ym2414_t;
 
