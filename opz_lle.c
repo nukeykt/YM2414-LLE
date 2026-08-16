@@ -183,7 +183,7 @@ static const int sin_delta[3][256] = {
     }
 };
 
-static void LFO_Clock(ym2141_t* chip, int hclk1, int hclk2, int ic_async, ym2414_lfo_t* lfo, int which) {
+static void LFO_Clock(ym2414_t* chip, int hclk1, int hclk2, int ic_async, ym2414_lfo_t* lfo, int which) {
     int* whichfreq = which ? chip->reg_lfo_freq : chip->reg_16;
     if (hclk1) {
         int lfrq_h = whichfreq[1] >> 4;
@@ -396,7 +396,7 @@ static void LFO_Clock(ym2141_t* chip, int hclk1, int hclk2, int ic_async, ym2414
 
 }
 
-void OPZLLE_Clock(ym2141_t* chip, int clk) {
+void OPZLLE_Clock(ym2414_t* chip, int clk) {
     int i;
 
     chip->input.clk = clk;
@@ -2397,6 +2397,190 @@ void OPZLLE_Clock(ym2141_t* chip, int clk) {
     }
     if (chip->trem_fsm_9[1] && !chip->trem_fsm_9_l) {
         chip->trem_latch_b = (chip->trem_shifter[1] >> 22) & 0x3ff;
+    }
+
+
+    if (hclk1) {
+        // nofb - 0-11
+        // 0 - none
+        // 1 - 8-15
+        // 2 - 7-15
+        // 3 - 6-15
+        // 4 - 5-15
+        // 5 - 4-15
+        // 6 - 3-14
+        // 7 - 2-13
+        int mod = x;
+        chip->op_mod_in[0] = (mod >> chip->op_mod_shift[1]) & 4095;
+
+        int sh = 0;
+        if (chip->op_dofb[1]) {
+            sh = chip->op_fb[5] == 0 ? 31 : 9 - chip->op_fb[5];
+        }
+        chip->op_mod_shift[0] = sh;
+
+        chip->op_fb[0] = (chip->reg_ch_bus >> 3) & 7;
+        chip->op_fb[2] = chip->op_fb[1];
+        chip->op_fb[4] = chip->op_fb[3];
+
+        chip->op_dofb[0] = chip->fsm_alg_o[1];
+
+        int phase_l = (chip->op_mod_in[1] & 63) + (chip->op_phase_in[0] & 63);
+        chip->op_phase_c = phase_l >> 6;
+        chip->op_phase[0] = phase_l & 63;
+
+        chip->op_mod_in[2] = chip->op_mod_in[1] >> 6;
+        chip->op_phase_in[1] = chip->op_phase_in[0] >> 6;
+
+        chip->op_wf12[0] = (chip->reg_op40new_l[1] >> 5) & 3;
+        chip->op_wf12[2] = chip->op_wf12[1];
+        chip->op_wf0[0] = chip->op_wf0[1] << 1;
+        chip->op_wf0[0] |= (chip->reg_op40new_l[1] >> 4) & 1;
+
+        int phase0 = (chip->op_wf12[3] & 2) != 0 ? (chip->op_phase[1] << 1) & 2047 : chip->op_phase[1] & 2047;
+        int phase1 = (phase0 & 1024) != 0 ? phase0 ^ 2047 : phase0 & 1023;
+
+        int sign = chip->op_wf12[3] == 2 ? (chip->op_phase[1] & 1024) != 0 : (chip->op_phase[1] & 2048) != 0;
+        int mute = chip->op_wf12[3] != 0 && (chip->op_phase[1] & 2048) != 0;
+
+        chip->op_sign[0] = (chip->op_sign[1] << 1) | sign;
+        chip->op_mute[0] = (chip->op_mute[1] << 1) | mute;
+
+        chip->op_logsin_index[0] = phase1;
+
+        int logsin_l = (chip->op_logsin_base[0] & 63) + (chip->op_logsin_delta[0] & 63);
+        chip->op_logsin_c1 = logsin_l >> 6;
+        chip->op_logsin[0] = logsin_l & 63;
+
+        chip->op_logsin_base[1] = chip->op_logsin_base[0] >> 6;
+        chip->op_logsin_delta[1] = chip->op_logsin_delta[0] >> 6;
+
+        chip->op_logsin_wf[0] = (chip->op_wf0[1] & 8) != 0 ? chip->op_logsin[1] << 1 : chip->op_logsin[1];
+        chip->op_atten[0] = chip->eg_sum_clip;
+        int atten_h = chip->op_logsin_atten_c1 + (chip->op_logsin_wf[1] & 63) + chip->op_atten[1];
+
+        chip->op_logsin_atten[1] = chip->op_logsin_atten[0] | ((atten_h & 63) << 8);
+
+        chip->op_logsin_atten_clip = (atten_h & 64) != 0 || (chip->op_logsin_wf[1] & 64) != 0 || (chip->op_mute[1] & 4) != 0;
+
+        chip->op_pow_base[0] = pow_base[chip->op_pow_index >> 2];
+        switch (chip->op_pow_index & 3) {
+        case 0:
+            chip->op_pow_delta[0] = pow_delta[0][chip->op_pow_index >> 2];
+            break;
+        case 1:
+            chip->op_pow_delta[0] = pow_delta[1][chip->op_pow_index >> 2];
+            break;
+        case 2:
+            chip->op_pow_delta[0] = pow_delta[2][chip->op_pow_index >> 2];
+            break;
+        default:
+            chip->op_pow_delta[0] = 0;
+            break;
+        }
+
+        int pow_l = (chip->op_pow_base[1] & 15) + chip->op_pow_delta[1];
+
+        chip->op_pow[0] = pow_l & 15;
+        chip->op_pow_c = pow_l >> 4;
+        chip->op_pow_base[2] = chip->op_pow_base[1] >> 4;
+
+        chip->op_pow_shift[1] = chip->op_pow_shift[0];
+        chip->op_pow_shift[3] = chip->op_pow_shift[2];
+        chip->op_pow_shift[5] = chip->op_pow_shift[4];
+        
+
+        chip->op_pow_shifted_l[0] = (chip->op_pow[1] | 2048) << (3 - chip->op_pow_shift_l);
+
+        int shifted_h = chip->op_pow_shifted_l[1] >> (4 * chip->op_pow_shift[6]);
+        if (chip->reg_test[1] & 16) {
+            shifted_h |= 1 << 15;
+        }
+        if (chip->op_sign[1] & 512) {
+            shifted_h ^= 65535;
+        }
+
+        chip->op_value[0] = shifted_h;
+        chip->op_value[2] = chip->op_value[1];
+        chip->op_value[4] = chip->op_value[3];
+        int corr = (chip->op_sign[1] & 2048) != 0;
+        chip->op_value[6] = (chip->op_value[5] + corr) & 65535;
+        chip->op_value[8] = chip->op_value[7];
+    }
+    if (hclk2) {
+
+        chip->op_phase_in[0] = chip->pg_out[2];
+        chip->op_mod_in[1] = chip->op_mod_in[0];
+
+        chip->op_mod_shift[1] = chip->op_mod_shift[0];
+
+        chip->op_fb[1] = chip->op_fb[0];
+        chip->op_fb[3] = chip->op_fb[2];
+        chip->op_fb[5] = chip->op_fb[4];
+
+        int phase_h = (chip->op_mod_in[2] + chip->op_phase_in[1] + chip->op_phase_c) & 63;
+        chip->op_phase[1] = chip->op_phase[0] | (phase_h << 6);
+        chip->op_wf12[1] = chip->op_wf12[0];
+        chip->op_wf12[3] = chip->op_wf12[2];
+        chip->op_wf0[1] = chip->op_wf0[0];
+
+        chip->op_sign[1] = chip->op_sign[0];
+        chip->op_mute[1] = chip->op_mute[0];
+
+        chip->op_logsin_base[0] = sin_base[chip->op_logsin_index >> 2];
+        switch (chip->op_logsin_index & 3) {
+            case 0:
+                chip->op_logsin_delta[0] = sin_delta[0][chip->op_logsin_index >> 2];
+                break;
+            case 1:
+                chip->op_logsin_delta[0] = sin_delta[1][chip->op_logsin_index >> 2];
+                break;
+            case 2:
+                chip->op_logsin_delta[0] = sin_delta[2][chip->op_logsin_index >> 2];
+                break;
+            default:
+                chip->op_logsin_delta[0] = 0;
+                break;
+        }
+
+        int logsin_h = chip->op_logsin_base[1] + chip->op_logsin_delta[1] + chip->op_logsin_c1;
+
+        chip->op_logsin[1] = (logsin_h << 6) | chip->op_logsin[0];
+
+
+        chip->op_logsin_atten[0] = chip->op_logsin_wf[0] & 3;
+        int atten_l = 1 + ((chip->op_logsin_wf[0] >> 2) & 63) + (chip->op_atten[0] & 63);
+
+        chip->op_logsin_atten_c1 = atten_l >> 6;
+        chip->op_logsin_atten[0] |= (atten_l & 63) << 2;
+
+        chip->op_logsin_wf[1] = chip->op_logsin_wf[0] >> 8;
+        chip->op_atten[1] = chip->op_atten[0] >> 6;
+
+        int powindex = chip->op_logsin_atten_clip ? 0x3fff : chip->op_logsin_atten[1];
+
+        chip->op_pow_index = powindex & 1023;
+        chip->op_pow_shift[0] = powindex >> 10;
+        chip->op_pow_shift[2] = chip->op_pow_shift[1];
+        chip->op_pow_shift[4] = chip->op_pow_shift[3] >> 2;
+        chip->op_pow_shift[6] = chip->op_pow_shift[5];
+
+        chip->op_pow_base[1] = chip->op_pow_base[0];
+        chip->op_pow_delta[1] = chip->op_pow_delta[0];
+
+        int pow_h = chip->op_pow_base[2] + chip->op_pow_c;
+
+        chip->op_pow[1] = (pow_h << 4) | chip->op_pow[0];
+
+        chip->op_pow_shift_l = chip->op_pow_shift[3] & 3;
+
+        chip->op_pow_shifted_l[1] = chip->op_pow_shifted_l[0];
+
+        chip->op_value[1] = chip->op_value[0];
+        chip->op_value[3] = chip->op_value[2];
+        chip->op_value[5] = chip->op_value[4];
+        chip->op_value[7] = chip->op_value[6];
+        chip->op_value[9] = chip->op_value[8];
     }
 }
 

@@ -442,5 +442,35 @@ typedef struct {
     int trem_sel[2];
     int trem_sens[2];
 
-} ym2141_t;
+    int op_phase_in[2];
+    int op_mod_in[3];
+    int op_mod_shift[2];
+    int op_fb[6];
+    int op_dofb[2];
+    int op_phase_c;
+    int op_phase[2];
+    int op_wf0[2];
+    int op_wf12[4];
+    int op_sign[2];
+    int op_mute[2];
+    int op_logsin_index;
+    int op_logsin_base[2];
+    int op_logsin_delta[2];
+    int op_logsin_c1;
+    int op_logsin[2];
+    int op_logsin_wf[2];
+    int op_logsin_atten[2];
+    int op_logsin_atten_c1;
+    int op_atten[2];
+    int op_logsin_atten_clip;
+    int op_pow_index;
+    int op_pow_shift[7];
+    int op_pow_shift_l;
+    int op_pow_base[3];
+    int op_pow_delta[2];
+    int op_pow_c;
+    int op_pow[2];
+    int op_pow_shifted_l[2];
+    int op_value[10];
+} ym2414_t;
 
