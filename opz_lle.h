@@ -559,5 +559,12 @@ typedef struct {
     int timer_b_status[2];
     int timer_b_subcnt[2];
 
+    int ct_data1;
+    int unk_write;
+    int unk_write_l[2];
+    int unk_write_en[2];
+    int unk_write_en2[6];
+    uint64_t unk_sh1_data[2];
+
 } ym2414_t;
 

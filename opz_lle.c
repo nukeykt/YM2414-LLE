@@ -2948,10 +2948,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->ac_ext_l[1] = chip->ac_ext_l[0];
     }
 
-    chip->o_so = dmode ? chip->ac_rbit2[1] || chip->ac_lbit2[1] : chip->ac_so_l[3];
-    chip->o_sh1 = dmode ? x : chip->ac_sh1_l[1];
-    chip->o_sh2_pull = dmode ? !(chip->ac_sh2_sync[1] & 1) : !chip->ac_sh2_l[1];
-
     if (hclk1) {
         int cnt_a = chip->timer_a_cnt[1] + chip->timer_a_inc;
         chip->timer_a_of = (cnt_a >> 10) & 1;
@@ -3000,6 +2996,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->timer_b_set = chip->timer_b_of && !rst_b && chip->reg_timer_b_irq[1];
         chip->timer_b_status[1] = chip->timer_b_status[0];
 
+        chip->timer_b_subcnt[1] = chip->timer_b_subcnt[0];
         chip->timer_clk[1] = chip->timer_clk[0];
     }
 
@@ -3067,5 +3064,47 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
     chip->o_data = chip->st_test ? chip->st_dbg : chip->st_latch;
     chip->o_irq_pull = chip->st_irq;
+
+    if (hclk1) {
+        chip->unk_write = chip->reg_write_0a[1] && write1_en && (chip->data_l & 128) != 0;
+        chip->unk_write_l[1] = chip->unk_write_l[0];
+    }
+    if (hclk2) {
+        chip->unk_write_l[0] = chip->unk_write;
+        chip->unk_write_en2[0] = chip->unk_write_en[0];
+    }
+    if (clk1) {
+        if (!chip->unk_write_en2[5] && chip->unk_write_en2[3] && (chip->reg_a[1] & 1) != 0) {
+            chip->unk_sh1_data[0] =
+                ((uint64_t)chip->reg_b[1] << 1) | (1ULL << 9) |
+                ((uint64_t)chip->reg_c[1] << 11) | (1ULL << 19) |
+                ((uint64_t)chip->reg_d[1] << 21) | (1ULL << 29) |
+                ((uint64_t)chip->reg_e[1] << 31) | (1ULL << 39);
+        } else {
+            chip->unk_sh1_data[0] = (chip->unk_sh1_data[1] >> 1) | (1ULL << 39);
+        }
+
+        chip->unk_write_en[1] = chip->unk_write_en[0];
+        chip->unk_write_en2[2] = chip->unk_write_en2[1];
+        chip->unk_write_en2[4] = chip->unk_write_en2[3];
+    }
+    if (clk2) {
+        chip->unk_write_en[0] = chip->unk_write && !chip->unk_write_l[1];
+        chip->unk_sh1_data[1] = chip->unk_sh1_data[0];
+        chip->unk_write_en2[1] = chip->unk_write_en2[0];
+        chip->unk_write_en2[3] = chip->unk_write_en2[2];
+        chip->unk_write_en2[5] = chip->unk_write_en2[4];
+    }
+
+    if (hclk2) {
+        int dbg = (chip->reg_a[0] & 4) != 0 ? chip->lfo1.inc[1] : chip->lfo2.inc[1];
+        chip->ct_data1 = (chip->reg_test[0] & 8) != 0 ? dbg : chip->reg_ct[0] & 1;
+    }
+
+    chip->o_so = dmode ? chip->ac_rbit2[1] || chip->ac_lbit2[1] : chip->ac_so_l[3];
+    chip->o_sh1 = dmode ? (chip->unk_sh1_data[0] & 1) : chip->ac_sh1_l[1];
+    chip->o_sh2_pull = dmode ? !(chip->ac_sh2_sync[1] & 1) : !chip->ac_sh2_l[1];
+    chip->o_ct1 = chip->ct_data1;
+    chip->o_ct2 = dmode ? !chip->unk_write_en[1] : (chip->reg_ct[1] >> 1) & 1;
 }
 
