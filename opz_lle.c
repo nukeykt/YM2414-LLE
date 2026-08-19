@@ -430,7 +430,8 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->data_l = chip->input.data;
     }
 
-    chip->o_data_z = !(!chip->ic_sync && chip->input.a0 && !chip->input.n_cs && !chip->input.n_rd);
+    int data_z = !(!chip->ic_sync && chip->input.a0 && !chip->input.n_cs && !chip->input.n_rd)
+    chip->o_data_z = data_z;
 
     int wr0 = chip->ic_sync && (!chip->input.n_cs && !chip->input.n_wr && !chip->input.a0);
     int wr1 = !chip->ic_sync && !chip->input.n_cs && !chip->input.n_wr && chip->input.a0;
@@ -526,7 +527,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
             chip->reg_c[0] = 0;
             chip->reg_d[0] = 0;
             chip->reg_e[0] = 0;
-            chip->reg_noise_en[0] = 0;
             chip->reg_noise_freq[0] = 0;
             chip->reg_timer_a[0] = 0;
             chip->reg_timer_b[0] = 0;
@@ -556,7 +556,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
                 chip->reg_kon_operator[0] = chip->reg_kon_operator[1];
             }
             if (write1_en && chip->reg_write_09[1]) {
-                chip->reg_test[0] = chip->data_l & 7;
+                chip->reg_test[0] = chip->data_l;
             } else {
                 chip->reg_test[0] = chip->reg_test[1];
             }
@@ -702,7 +702,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->reg_c[1] = chip->reg_c[0];
         chip->reg_d[1] = chip->reg_d[0];
         chip->reg_e[1] = chip->reg_e[0];
-        chip->reg_noise_en[1] = chip->reg_noise_en[0];
         chip->reg_noise_freq[1] = chip->reg_noise_freq[0];
         chip->reg_timer_a[1] = chip->reg_timer_a[0];
         chip->reg_timer_b[1] = chip->reg_timer_b[0];
@@ -2668,5 +2667,349 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->op_modsum[2] = chip->op_modsum[1];
     }
+
+    int dmode = chip->reg_a[1] & 1;
+
+    int rclip = !dmode || (dmode && chip->ac_sh2_xr_nz[1] && (chip->ac_sh2_sync[1] & 16) == 0);
+    int rch = !rclip && chip->ac_rcliph;
+    int rcl = !rclip && chip->ac_rclipl;
+    int rbit = rch || (!rcl && (chip->ac_serial_r[1] & 1) != 0);
+
+    int lclip = !dmode || (dmode && chip->ac_sh2_xr_nz[1] && (chip->ac_sh2_sync[1] & 16) == 0);
+    int lch = !lclip && chip->ac_lcliph;
+    int lcl = !lclip && chip->ac_lclipl;
+    int lbit = lch || (!lcl && (chip->ac_serial_r[1] & 1) != 0);
+
+    if (hclk1) {
+        int ro = chip->fsm_alg_o[8] && (chip->ac_pan[1] || chip->ac_mono);
+
+        chip->ac_add_r[0] = ro ? (short)chip->op_value[9] : 0;
+        chip->ac_sum_r_lo[0] = chip->fsm_13[1] ? 0 : chip->ac_sum_r_lo[1];
+        chip->ac_sum_r_l[0] = chip->ac_sum_r_lo[1];
+        chip->ac_sum_r_hi[0] = (chip->ac_sum_r_c + chip->ac_add_r[1] + chip->ac_sum_r_hi[1]) & 0x3ff;
+
+        int lo = chip->fsm_alg_o[8] && (!chip->ac_pan[1] || chip->ac_mono);
+        chip->ac_add_l[0] = lo ? (short)chip->op_value[9] : 0;
+        chip->ac_sum_l_lo[0] = chip->fsm_29[1] ? 0 : chip->ac_sum_l_lo[1];
+        chip->ac_sum_l_l[0] = chip->ac_sum_l_lo[1];
+        chip->ac_sum_l_hi[0] = (chip->ac_sum_l_c + chip->ac_add_l[1] + chip->ac_sum_l_hi[1]) & 0x3ff;
+
+        chip->ac_pan[0] = (chip->reg_ch20_l[1] >> 7) & 1;
+
+        chip->ac_fsm14[0] = chip->fsm_13[1];
+        chip->ac_fsm15[0] = chip->ac_fsm14[1];
+
+        chip->ac_fsm30[0] = chip->fsm_29[1];
+        chip->ac_fsm31[0] = chip->ac_fsm30[1];
+
+        chip->ac_out_sync[0] = (chip->ac_out_sync[1] << 1) | chip->fsm_o3[1];
+
+        int bit = 0;
+        if (chip->fsm_o3[1]) {
+            bit |= chip->ac_shifter_sign2;
+        }
+        if (chip->ac_out_sync[1] & 1) {
+            bit |= (chip->ac_shifter_shift >> 0) & 1;
+        }
+        if (chip->ac_out_sync[1] & 2) {
+            bit |= (chip->ac_shifter_shift >> 1) & 1;
+        }
+        if (chip->ac_out_sync[1] & 4) {
+            bit |= (chip->ac_shifter_shift >> 2) & 1;
+        }
+        if ((chip->ac_out_sync[1] & 7) == 0 && !chip->fsm_o3[1]) {
+            if (chip->ac_shifter_shift) {
+                bit |= (chip->ac_shifter[1] >> (chip->ac_shifter_shift - 1)) & 1;
+            }
+        }
+
+        chip->ac_shifter[0] = chip->ac_shifter[1] >> 1;
+        chip->ac_shifter[0] |= chip->shifter_in << 20;
+
+        chip->ac_so_l[0] = bit;
+        chip->ac_so_l[1] = chip->ac_so_l[0];
+
+        chip->ac_rbit[0] = !dmode && rbit;
+        chip->ac_rbit[2] = chip->ac_rbit[1];
+
+        chip->ac_lbit[0] = !dmode && lbit;
+        chip->ac_lbit[2] = chip->ac_lbit[1];
+
+        chip->ac_sh1_l[0] = chip->fsm_o7[1];
+        chip->ac_sh2_l[0] = chip->fsm_o8[1];
+    }
+    if (hclk2) {
+
+        int addr_l = (chip->ac_add_r[0] & 0x3ff) + (chip->ac_sum_r[0] & 0x3ff);
+
+        chip->ac_sum_r_lo[1] = addr_l & 0x3ff;
+        chip->ac_sum_r_c = addr_l >> 10;
+
+        chip->ac_add_r[1] = chip->ac_add_r[0] >> 10;
+
+        chip->ac_sum_r_l[1] = chip->ac_sum_r_l[0] | (chip->ac_sum_r_hi[1] << 10);
+
+        chip->ac_sum_r_hi[1] = chip->ac_fsm14[0] ? 0 : chip->ac_sum_r_hi[0];
+
+        addr_l = (chip->ac_add_l[0] & 0x3ff) + (chip->ac_sum_l[0] & 0x3ff);
+
+        chip->ac_sum_l_lo[1] = addr_l & 0x3ff;
+        chip->ac_sum_l_c = addr_l >> 10;
+
+        chip->ac_add_l[1] = chip->ac_add_l[0] >> 10;
+
+        chip->ac_sum_l_l[1] = chip->ac_sum_l_l[0] | (chip->ac_sum_l_hi[1] << 10);
+
+        chip->ac_sum_l_hi[1] = chip->ac_fsm30[0] ? 0 : chip->ac_sum_l_hi[0];
+
+        chip->ac_mono = (chip->reg_a[0] & 4) != 0 && (chip->reg_30_0_l[0] & 32) != 0;
+        chip->ac_pan[1] = chip->ac_pan[0];
+
+        chip->ac_fsm14[1] = chip->ac_fsm14[0];
+        chip->ac_fsm15[1] = chip->ac_fsm15[0];
+
+        chip->ac_fsm30[1] = chip->ac_fsm30[0];
+        chip->ac_fsm31[1] = chip->ac_fsm31[0];
+
+        chip->ac_out_sync[1] = chip->ac_out_sync[0];
+        chip->ac_shifter[1] = chip->ac_shifter[0];
+
+        chip->ac_so_l[1] = chip->ac_so_l[0];
+        chip->ac_so_l[3] = chip->ac_so_l[2];
+
+        chip->ac_rbit[1] = chip->ac_rbit[0];
+        chip->ac_rbit[3] = chip->ac_rbit[2];
+
+        chip->ac_lbit[1] = chip->ac_lbit[0];
+        chip->ac_lbit[3] = chip->ac_lbit[2];
+
+        int shifter_in = chip->fsm_o5[1] ? chip->ac_lbit[3] : chip->ac_rbit[3];
+        chip->ac_shifter_in = shifter_in;
+
+        if ((chip->ac_out_sync[0] & 1) && (chip->ac_out_sync[1] & 1)) {
+            chip->ac_shifter_sign = shifter_in;
+            chip->ac_shifter_high = (chip->ac_shifter[1] >> 15) & 63;
+        }
+        if (chip->fsm_o2[1]) {
+            chip->ac_shifter_sign2 = chip->ac_shifter_sign;
+            int top = chip->ac_shifter_high;
+            if (!chip->ac_shifter_sign) {
+                top ^= 63;
+            }
+
+            int shift = 0;
+            if (top & 32) {
+                shift = 7;
+            } else if (top & 16) {
+                shift = 6;
+            } else if (top & 8) {
+                shift = 5;
+            } else if (top & 4) {
+                shift = 4;
+            } else if (top & 2) {
+                shift = 3;
+            } else if (top & 1) {
+                shift = 2;
+            } else {
+                shift = 1;
+            }
+            chip->ac_shifter_shift = shift;
+        }
+
+        chip->ac_sh1_l[1] = chip->ac_sh1_l[0] || ic_async;
+        chip->ac_sh2_l[1] = chip->ac_sh2_l[0] || ic_async;
+
+    }
+    if (clk1) {
+        chip->ac_fsm14_l[0] = chip->ac_fsm14[1];
+        chip->ac_rbit2[0] = rbit;
+        chip->ac_lbit2[0] = lbit;
+
+        chip->ac_sh2i_1[0] = (chip->ac_sh2i_1[1] << 1) | (chip->input.sh2 != 0);
+
+        chip->ac_sh2i_2[0] = (chip->ac_sh2i_2[1] << 1);
+        if ((chip->ac_sh2i_1[1] & 3) == 2) {
+            chip->ac_sh2i_2[0] |= 1;
+        }
+
+        if (chip->ac_sh2i_2[1] & 32) {
+            chip->ac_sh2i_cnt[0] = 9;
+        } else if (ic_async || (chip->ac_sh2i_2[1] & 16) != 0 || chip->ac_sh2i_cnt[1] == 63) {
+            chip->ac_sh2i_cnt[0] = 0;
+        } else {
+            chip->ac_sh2i_cnt[0] = (chip->ac_sh2i_cnt[1] + 1) & 63;
+        }
+
+        chip->ac_sh2_sync[0] = chip->ac_sh2_sync[1] << 1;
+        chip->ac_sh2_sync[0] |= (chip->ac_sh2i_cnt[1] >> 5) & 1;
+
+        int xr = ((chip->ac_sh2_sync[1] >> 4) ^ (chip->ac_sh2_sync[1] >> 3)) & 1;
+
+        chip->ac_sh2_xr[0] = chip->ac_sh2_xr[1] << 1;
+        chip->ac_sh2_xr[0] |= xr;
+
+        chip->ac_sh2_xr_nz[0] = (chip->ac_sh2_xr[1] & 0x1fff) != 0;
+    }
+    if (clk2) {
+        chip->ac_fsm14_l[1] = chip->ac_fsm14_l[0];
+        chip->ac_rbit2[1] = chip->ac_rbit2[0];
+        chip->ac_lbit2[1] = chip->ac_lbit2[0];
+
+        chip->ac_sh2i_1[1] = chip->ac_sh2i_1[0];
+        chip->ac_sh2i_2[1] = chip->ac_sh2i_2[0];
+
+        chip->ac_sh2i_cnt[1] = chip->ac_sh2i_cnt[0];
+        chip->ac_sh2_sync[1] = chip->ac_sh2_sync[0];
+
+        chip->ac_sh2_xr[1] = chip->ac_sh2_xr[0];
+        chip->ac_sh2_xr_nz[1] = chip->ac_sh2_xr_nz[0];
+    }
+
+    int sclk1 = dmode ? clk1 : hclk1;
+    int sclk2 = dmode ? clk2 : hclk2;
+
+    if (chip->ac_fsm14[1] && !chip->ac_fsm14_l[1]) {
+        chip->ac_sum_r_lock = chip->ac_sum_r_l[1];
+    }
+
+    int rload = dmode ? (chip->ac_sh2_sync[1] & 48) == 32 : chip->ac_fsm15[1];
+    int lload = dmode ? (chip->ac_sh2_sync[1] & 48) == 16 : chip->ac_fsm31[1];
+
+    // 000 - nop
+    // 001 - cliph
+    // 010 - cliph
+    // 011 - cliph
+    // 111 - nop
+    // 110 - clipl
+    // 101 - clipl
+    // 100 - clipl
+
+    if (rload && !chip->ac_rload_l) {
+        int hi = (chip->ac_sum_r_lock >> 17) & 7;
+        int clipl = (hi & 4) != 0 && ((hi & 1) == 0 || (hi & 3) == 1);
+        int cliph = (hi & 4) == 0 && ((hi & 1) != 0 || (hi & 3) == 2);
+
+
+        chip->ac_rclipl = clipl;
+        chip->ac_rcliph = cliph;
+    }
+
+    if (lload && !chip->ac_lload_l) {
+        int hi = (chip->ac_sum_l_lock >> 17) & 7;
+        int clipl = (hi & 4) != 0 && ((hi & 1) == 0 || (hi & 3) == 1);
+        int cliph = (hi & 4) == 0 && ((hi & 1) != 0 || (hi & 3) == 2);
+
+
+        chip->ac_lclipl = clipl;
+        chip->ac_lcliph = cliph;
+    }
+
+    if (sclk1) {
+        int rmsb = (chip->ac_sum_r_lock >> 19) & 1;
+        int rb = rload && (rmsb ^ !dmode);
+
+        chip->ac_serial_r[0] = chip->ac_serial_r[1] >> 1;
+        if (rload) {
+            chip->ac_serial_r[0] |= chip->ac_sum_r_lock & 0x1ffff;
+        }
+        chip->ac_serial_r[0] |= (rb || (chip->ac_ext_r[1] & 1) != 0) << 17;
+
+        chip->ac_rload_l = rload;
+
+        chip->ac_ext_r[0] = chip->ac_ext_r[1];
+        if (rb) {
+            chip->ac_ext_r[0] |= 511;
+        }
+
+        int lmsb = (chip->ac_sum_l_lock >> 19) & 1;
+        int lb = lload && (lmsb ^ !dmode);
+
+        chip->ac_serial_l[0] = chip->ac_serial_l[1] >> 1;
+        if (rload) {
+            chip->ac_serial_l[0] |= chip->ac_sum_r_lock & 0x1ffff;
+        }
+        chip->ac_serial_l[0] |= (lb || (chip->ac_ext_l[1] & 1) != 0) << 17;
+
+        chip->ac_lload_l = lload;
+
+        chip->ac_ext_l[0] = chip->ac_ext_l[1];
+        if (lb) {
+            chip->ac_ext_l[0] |= 511;
+        }
+    }
+    if (sclk2) {
+        chip->ac_serial_r[1] = chip->ac_serial_r[0];
+        chip->ac_ext_r[1] = chip->ac_ext_r[0];
+        chip->ac_serial_l[1] = chip->ac_serial_l[0];
+        chip->ac_ext_l[1] = chip->ac_ext_l[0];
+    }
+
+    chip->o_so = dmode ? chip->ac_rbit2[1] || chip->ac_lbit2[1] : chip->ac_so_l[3];
+    chip->o_sh1 = dmode ? x : chip->ac_sh1_l[1];
+    chip->o_sh2_pull = dmode ? !(chip->ac_sh2_sync[1] & 1) : !chip->ac_sh2_l[1];
+
+    if (hclk1) {
+        chip->st_test = (chip->reg_test[1] & 64) != 0;
+        if (chip->reg_test[1] & 128) {
+            chip->st_dbg = (chip->op_value[9] >> 8) & 63;
+            if (chip->reg_a[1] & 2) {
+                chip->st_dbg |= (chip->op_value[9] >> 8) & 192;
+            } else {
+                if (chip->eg_dbg_shifter[1] & 32768) {
+                    chip->st_dbg |= 64;
+                }
+                if (chip->pg_dbg[1] & 1) {
+                    chip->st_dbg |= 128;
+                }
+            }
+        } else {
+            chip->st_dbg = chip->op_value[9] & 255;
+        }
+
+        chip->st_ch_irq[0] = x && (chip->st_ch_irq[1] || chip->eg_int);
+
+        if (chip->st_ch_cnt_rst) {
+            chip->st_ch_cnt[0] = 0;
+        } else {
+            chip->st_ch_cnt[0] = (chip->st_ch_cnt[1] + 1) & 15;
+        }
+
+        int busy = chip->st_busy_cnt[1] + chip->st_busy_en[1];
+        int busy_of = (busy >> 5) & 1;
+
+        chip->st_busy_cnt[0] = chip->ic_sync ? 0 : busy & 31;
+
+        chip->st_busy_en[0] = (!(busy_of || chip->ic_sync) && chip->st_busy_en[1]) || write1_en;
+    }
+    if (hclk2) {
+        chip->st_ch_irq[1] = chip->st_ch_irq[0];
+        chip->st_ch_irq_l[0] = (chip->st_ch_irq_l[1] << 1) | chip->st_ch_irq[0];
+
+        chip->st_ch_cnt[1] = chip->st_ch_cnt[0];
+
+        chip->st_irq = x || y || chip->st_ch_irq[0];
+
+        chip->st_ch_cnt_rst = chip->fsm_o21;
+
+        chip->st_busy_cnt[1] = chip->st_busy_cnt[0];
+        chip->st_busy_en[1] = chip->st_busy_en[0];
+    }
+
+    if (data_z) {
+        chip->st_latch &= ~0xa3;
+        chip->st_latch |= x << 0;
+        chip->st_latch |= y << 1;
+        chip->st_latch |= chip->st_ch_irq[0] << 5;
+        chip->st_latch |= chip->st_busy_en[0] << 7;
+    }
+
+    if ((chip->st_ch_irq_l[1] & 16) != 0 && (chip->st_ch_irq_l[0] & 32) == 0) {
+        chip->st_latch &= ~0x5c;
+        chip->st_latch |= (chip->st_ch_cnt[0] & 7) << 2;
+        chip->st_latch |= (chip->st_ch_cnt[0] & 8) << 3;
+    }
+
+    chip->o_data = chip->st_test ? chip->st_dbg : chip->st_latch;
+    chip->o_irq_pull = chip->st_irq;
 }
 
