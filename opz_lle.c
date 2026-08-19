@@ -593,6 +593,10 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
                 chip->reg_noise_freq[0] = chip->reg_noise_freq[1];
             }
             chip->reg_timer_a[0] = chip->reg_timer_a[1];
+            if (write1_en && chip->reg_write_10[1]) {
+                chip->reg_timer_a[0] &= ~0x3fc;
+                chip->reg_timer_a[0] |= chip->data_l << 2;
+            }
             if (write1_en && chip->reg_write_11[1]) {
                 chip->reg_timer_a[0] &= ~0x3;
                 chip->reg_timer_a[0] |= chip->data_l & 3;
@@ -2949,6 +2953,71 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
     chip->o_sh2_pull = dmode ? !(chip->ac_sh2_sync[1] & 1) : !chip->ac_sh2_l[1];
 
     if (hclk1) {
+        int cnt_a = chip->timer_a_cnt[1] + chip->timer_a_inc;
+        chip->timer_a_of = (cnt_a >> 10) & 1;
+        if (chip->timer_a_load) {
+            chip->timer_a_cnt[0] = chip->reg_timer_a[1];
+        } else {
+            chip->timer_a_cnt[0] = chip->timer_a_en[0] ? cnt_a & 0x3ff : 0;
+        }
+        chip->timer_a_en[1] = chip->timer_a_en[0];
+        chip->timer_a_reset[0] = write1_en && chip->reg_write_14[1] && (chip->data_l & 16) != 0;
+        chip->timer_a_status[0] = chip->timer_a_set || (chip->timer_a_status[1] && !chip->timer_a_reset[1]);
+
+        int cnt_b = chip->timer_b_cnt[1] + chip->timer_b_inc;
+        chip->timer_b_of = (cnt_b >> 8) & 1;
+        if (chip->timer_b_load) {
+            chip->timer_b_cnt[0] = chip->reg_timer_b[1];
+        } else {
+            chip->timer_b_cnt[0] = chip->timer_b_en[0] ? cnt_b & 0xff : 0;
+        }
+        chip->timer_b_en[1] = chip->timer_b_en[0];
+        chip->timer_b_reset[0] = write1_en && chip->reg_write_14[1] && (chip->data_l & 32) != 0;
+        chip->timer_b_status[0] = chip->timer_b_set || (chip->timer_b_status[1] && !chip->timer_b_reset[1]);
+
+        chip->timer_clk[0] = chip->fsm_30[1];
+
+        int subcnt = chip->timer_b_subcnt[1] + chip->timer_clk[1];
+        chip->timer_b_subcnt[0] = ic_async ? 0 : subcnt & 31;
+        chip->timer_b_subcnt_of = (subcnt >> 5) & 1;
+    }
+    if (hclk2) {
+        int test = (chip->reg_test[0] & 4) != 0;
+        chip->timer_a_cnt[1] = chip->timer_a_cnt[0];
+        chip->timer_a_load = chip->timer_a_of || (!chip->timer_a_en[1] && chip->reg_timer_a_load[0]);
+        chip->timer_a_en[0] = chip->reg_timer_a_load[0];
+        chip->timer_a_inc = (chip->reg_timer_a_load[0] && chip->timer_clk[0]) || test;
+        int rst_a = chip->timer_a_reset[0] || ic_async;
+        chip->timer_a_reset[1] = rst_a;
+        chip->timer_a_set = chip->timer_a_of && !rst_a && chip->reg_timer_a_irq[1];
+
+        chip->timer_b_cnt[1] = chip->timer_b_cnt[0];
+        chip->timer_b_load = chip->timer_b_of || (!chip->timer_b_en[1] && chip->reg_timer_b_load[0]);
+        chip->timer_b_en[0] = chip->reg_timer_b_load[0];
+        chip->timer_b_inc = (chip->reg_timer_b_load[0] && chip->timer_b_subcnt_of) || test;
+        int rst_b = chip->timer_b_reset[0] || ic_async;
+        chip->timer_b_reset[1] = rst_b;
+        chip->timer_b_set = chip->timer_b_of && !rst_b && chip->reg_timer_b_irq[1];
+        chip->timer_b_status[1] = chip->timer_b_status[0];
+
+        chip->timer_clk[1] = chip->timer_clk[0];
+    }
+
+    if (data_z) {
+        chip->st_latch &= ~0xa3;
+        chip->st_latch |= chip->timer_a_status[0] << 0;
+        chip->st_latch |= chip->timer_b_status[0] << 1;
+        chip->st_latch |= chip->st_ch_irq[0] << 5;
+        chip->st_latch |= chip->st_busy_en[0] << 7;
+    }
+
+    if ((chip->st_ch_irq_l[1] & 16) != 0 && (chip->st_ch_irq_l[0] & 32) == 0) {
+        chip->st_latch &= ~0x5c;
+        chip->st_latch |= (chip->st_ch_cnt[0] & 7) << 2;
+        chip->st_latch |= (chip->st_ch_cnt[0] & 8) << 3;
+    }
+
+    if (hclk1) {
         chip->st_test = (chip->reg_test[1] & 64) != 0;
         if (chip->reg_test[1] & 128) {
             chip->st_dbg = (chip->op_value[9] >> 8) & 63;
@@ -2966,7 +3035,8 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
             chip->st_dbg = chip->op_value[9] & 255;
         }
 
-        chip->st_ch_irq[0] = x && (chip->st_ch_irq[1] || chip->eg_int);
+        int rst = ic_async || (write1_en && chip->reg_write_14[1] && (chip->data_l & 64) != 0);
+        chip->st_ch_irq[0] = !rst && (chip->st_ch_irq[1] || chip->eg_int);
 
         if (chip->st_ch_cnt_rst) {
             chip->st_ch_cnt[0] = 0;
@@ -2987,26 +3057,12 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->st_ch_cnt[1] = chip->st_ch_cnt[0];
 
-        chip->st_irq = x || y || chip->st_ch_irq[0];
+        chip->st_irq = (chip->st_latch & 3) = 0 || chip->st_ch_irq[0];
 
         chip->st_ch_cnt_rst = chip->fsm_o21;
 
         chip->st_busy_cnt[1] = chip->st_busy_cnt[0];
         chip->st_busy_en[1] = chip->st_busy_en[0];
-    }
-
-    if (data_z) {
-        chip->st_latch &= ~0xa3;
-        chip->st_latch |= x << 0;
-        chip->st_latch |= y << 1;
-        chip->st_latch |= chip->st_ch_irq[0] << 5;
-        chip->st_latch |= chip->st_busy_en[0] << 7;
-    }
-
-    if ((chip->st_ch_irq_l[1] & 16) != 0 && (chip->st_ch_irq_l[0] & 32) == 0) {
-        chip->st_latch &= ~0x5c;
-        chip->st_latch |= (chip->st_ch_cnt[0] & 7) << 2;
-        chip->st_latch |= (chip->st_ch_cnt[0] & 8) << 3;
     }
 
     chip->o_data = chip->st_test ? chip->st_dbg : chip->st_latch;

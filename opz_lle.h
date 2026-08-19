@@ -540,5 +540,24 @@ typedef struct {
     int st_busy_cnt[2];
     int st_busy_en[2];
 
+    int timer_clk[2];
+    int timer_a_load;
+    int timer_a_cnt[2];
+    int timer_a_inc;
+    int timer_a_en[2];
+    int timer_a_of;
+    int timer_a_reset[2];
+    int timer_a_set;
+    int timer_a_status[2];
+    int timer_b_load;
+    int timer_b_cnt[2];
+    int timer_b_inc;
+    int timer_b_en[2];
+    int timer_b_of;
+    int timer_b_reset[2];
+    int timer_b_set;
+    int timer_b_status[2];
+    int timer_b_subcnt[2];
+
 } ym2414_t;
 
