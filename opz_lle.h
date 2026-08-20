@@ -502,6 +502,7 @@ typedef struct {
     int ac_fsm30[2];
     int ac_fsm31[2];
     int ac_fsm14_l[2];
+    int ac_fsm30_l[2];
     int ac_serial_r[2];
     int ac_serial_l[2];
     int ac_rload_l;
