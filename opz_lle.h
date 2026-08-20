@@ -236,6 +236,7 @@ typedef struct {
     int lfo_amen[2];
     int lfo_ams[2];
     int lfo_amse[2];
+    int lfo_bcnt_rst;
 
     ym2414_lfo_t lfo1, lfo2;
 
@@ -502,6 +503,7 @@ typedef struct {
     int ac_fsm31[2];
     int ac_fsm14_l[2];
     int ac_serial_r[2];
+    int ac_serial_l[2];
     int ac_rload_l;
     int ac_rclipl;
     int ac_rcliph;
@@ -521,6 +523,7 @@ typedef struct {
     int ac_lbit[4];
     int ac_lbit2[2];
     int ac_ext_r[2];
+    int ac_ext_l[2];
     int ac_sh2i_1[2];
     int ac_sh2i_2[2];
     int ac_sh2i_cnt[2];
@@ -558,6 +561,7 @@ typedef struct {
     int timer_b_set;
     int timer_b_status[2];
     int timer_b_subcnt[2];
+    int timer_b_subcnt_of;
 
     int ct_data1;
     int unk_write;

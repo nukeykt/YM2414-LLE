@@ -310,7 +310,7 @@ static void LFO_Clock(ym2414_t* chip, int hclk1, int hclk2, int ic_async, ym2414
 
         lfo->bcnt[1] = lfo->bcnt[0];
 
-        chip->lfo_sum_c_in = lfo->sum_c_out && (chip->lfo_sync[1] & 4) == 0;
+        lfo->sum_c_in = lfo->sum_c_out && (chip->lfo_sync[1] & 4) == 0;
 
         lfo->out_shifter[1] = lfo->out_shifter[0];
         lfo->shifter[1] = lfo->shifter[0];
@@ -362,7 +362,7 @@ static void LFO_Clock(ym2414_t* chip, int hclk1, int hclk2, int ic_async, ym2414
         lfo->bit = lfo_bit;
 
         lfo->pm_sign = (lfo->out_shifter[1] >> 15) & 1;
-        int s = whichwave == 2 ? chip->lfo_sign_trig : lfo->sign_saw;
+        int s = whichwave == 2 ? lfo->sign_trig : lfo->sign_saw;
         lfo->pm_sign ^= s;
 
         if ((chip->lfo_sync[1] & 4) && (chip->lfo_sync[0] & 8))
@@ -430,7 +430,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->data_l = chip->input.data;
     }
 
-    int data_z = !(!chip->ic_sync && chip->input.a0 && !chip->input.n_cs && !chip->input.n_rd)
+    int data_z = !(!chip->ic_sync && chip->input.a0 && !chip->input.n_cs && !chip->input.n_rd);
     chip->o_data_z = data_z;
 
     int wr0 = chip->ic_sync && (!chip->input.n_cs && !chip->input.n_wr && !chip->input.a0);
@@ -654,7 +654,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
             }
             if (write1_en && chip->reg_write_1b[1]) {
                 chip->reg_lfo_wave[0] = chip->data_l & 3;
-                chip->reg_ct[0] = (chip->data1 >> 6) & 3;
+                chip->reg_ct[0] = (chip->data_l >> 6) & 3;
             } else {
                 chip->reg_lfo_wave[0] = chip->reg_lfo_wave[1];
                 chip->reg_ct[0] = chip->reg_ct[1];
@@ -1108,7 +1108,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         reg_op2_in |= (uint64_t)chip->reg_opa0_l[1] << 8;
         reg_op2_in |= (uint64_t)chip->reg_opc0_l[1] << 16;
         reg_op2_in |= (uint64_t)chip->reg_opc0new_l[1] << 23;
-        reg_op2_in |= (uint64_t)chip->reg_ope0[1] << 29;
+        reg_op2_in |= (uint64_t)chip->reg_ope0_l[1] << 29;
 
         for (i = 0; i < 16; i++) {
             if (chip->reg_op_sel[1] & (2 << i)) {
@@ -1229,8 +1229,8 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         int newm = chip->reg_15[0] & 1;
         int wr1b = write1_en && chip->reg_write_1b[1] && newm;
-        chip->lfo1.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data1 & 16) != 0);
-        chip->lfo2.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data1 & 32) != 0);
+        chip->lfo1.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data_l & 16) != 0);
+        chip->lfo2.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data_l & 32) != 0);
         chip->lfo1.freq_write[0] = write1_en && chip->reg_write_18[1];
         chip->lfo2.freq_write[0] = write1_en && chip->reg_write_16[1];
 
@@ -1358,7 +1358,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->freq_freq_frac[0] = kcf & 15;
         chip->freq_freq_frac[2] = chip->freq_freq_frac[1];
-        chip->freq_freq_frac0 = chip->freq_fre_frac[3] & 1;
+        chip->freq_freq_frac0 = chip->freq_freq_frac[3] & 1;
 
 
         chip->freq_rom_base[1] = chip->freq_rom_base[0];
@@ -1393,7 +1393,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
             if ((chip->freq_freq_frac[3] & 1) != 0) {
                 lerp3 |= 2;
             }
-            if ((chip->freq_rom_slope & 1) != 0 (chip->freq_freq_frac[3] & 12) == 12) {
+            if ((chip->freq_rom_slope & 1) != 0 && (chip->freq_freq_frac[3] & 12) == 12) {
                 lerp3 |= 4;
             }
             if ((chip->freq_freq_frac[3] & 2) != 0) {
@@ -1472,7 +1472,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->freq_lfo_add_shift_h = chip->freq_lfo_add_shift >> 6;
 
         int suml = chip->freq_kf[4] + (chip->freq_lfo_add_shift & 63) + chip->freq_lfo_sign[1];
-        chip->freq_kc_lfo_sumlof[0] = (suml >> 6) & 1;
+        chip->freq_kc_lfo_sumlof = (suml >> 6) & 1;
         chip->freq_kc_lfo_suml[0] = suml & 63;
         chip->freq_kc_lfo_suml[2] = chip->freq_kc_lfo_suml[1];
 
@@ -1643,7 +1643,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         int fnum = chip->pg_fix[2] ? 1200 : chip->freq_fnum;
         chip->pg_shift[0] = chip->pg_fix[0] ? chip->pg_dt1 : chip->pg_block;
 
-        chip->pg_freq = (fnum << chip->pg_shift[2]) >> 2;
+        chip->pg_freq = (fnum << chip->pg_shift[1]) >> 2;
 
         chip->dt_note[1] = chip->pg_block == 7 ? 0 : chip->dt_note[0];
         chip->dt_add1 = chip->pg_block;
@@ -1725,7 +1725,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         int step = chip->fsm_o10[1];
         int rst = ic_async || (step && match);
 
-        chip->ramp_cnt[0][0] = rst ? 0 : (chip->ramp_cnt[7] + step);
+        chip->ramp_cnt[0][0] = rst ? 0 : (chip->ramp_cnt[1][7] + step);
         memcpy(&chip->ramp_cnt[0][1], &chip->ramp_cnt[1][0], 7 * sizeof(uint8_t));
         chip->ramp_step[0] = match;
 
@@ -1897,7 +1897,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->eg_state_l[2] = chip->eg_state_l[1];
         chip->eg_state_l[4] = chip->eg_state_l[3];
 
-        chip->eg_okeyn_l[0] = (chip->eg_okey_l[1] << 1) | (chip->eg_cell_o[1] & 1);
+        chip->eg_okeyn_l[0] = (chip->eg_okeyn_l[1] << 1) | (chip->eg_cell_o[1] & 1);
 
         chip->eg_level_l[0] = (chip->eg_cell_o[1] >> 3) & 4095;
         chip->eg_level_l[2] = chip->eg_level_l[1];
@@ -1919,39 +1919,39 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->eg_level_add1 = level;
 
-        int inc = 0;
+        int einc = 0;
         if (chip->eg_linear) {
-            inc |= chip->eg_inc1 << 0;
-            inc |= chip->eg_inc2 << 1;
-            inc |= chip->eg_inc3 << 2;
-            inc |= chip->eg_inc4 << 3;
-            inc |= chip->eg_inc5 << 4;
+            einc |= chip->eg_inc1 << 0;
+            einc |= chip->eg_inc2 << 1;
+            einc |= chip->eg_inc3 << 2;
+            einc |= chip->eg_inc4 << 3;
+            einc |= chip->eg_inc5 << 4;
         }
         if (chip->eg_exp) {
             if (chip->eg_inc1) {
-                inc |= (~chip->eg_level_l[3] >> 6) & 4095;
+                einc |= (~chip->eg_level_l[3] >> 6) & 4095;
             }
             if (chip->eg_inc2) {
-                inc |= (~chip->eg_level_l[3] >> 5) & 4095;
+                einc |= (~chip->eg_level_l[3] >> 5) & 4095;
             }
             if (chip->eg_inc3) {
-                inc |= (~chip->eg_level_l[3] >> 4) & 4095;
+                einc |= (~chip->eg_level_l[3] >> 4) & 4095;
             }
             if (chip->eg_inc4) {
-                inc |= (~chip->eg_level_l[3] >> 3) & 4095;
+                einc |= (~chip->eg_level_l[3] >> 3) & 4095;
             }
             if (chip->eg_inc5) {
-                inc |= (~chip->eg_level_l[3] >> 2) & 4095;
+                einc |= (~chip->eg_level_l[3] >> 2) & 4095;
             }
         }
 
-        chip->eg_level_add2 = inc;
+        chip->eg_level_add2 = einc;
 
         chip->eg_lev_shift = (chip->reg_opc0new_l[1] >> 4) & 3;
 
         chip->eg_level_shifted[1] = chip->eg_level_shifted[0];
 
-        chip->eg_rev_sel = chip->reg_opc0new_l[1] >> 3) & 1;
+        chip->eg_rev_sel = (chip->reg_opc0new_l[1] >> 3) & 1;
 
         chip->eg_o17[0] = chip->fsm_o17[1];
         chip->eg_o18[0] = chip->fsm_o18[1];
@@ -2091,7 +2091,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->eg_rate[1] = chip->eg_rate[0];
 
         int rks = 0;
-        switch (chip->eg_ks) {
+        switch (chip->eg_ks[2]) {
             case 0:
                 if (chip->eg_rate[0] != 0) {
                     rks = chip->eg_kcode >> 3;
@@ -2362,7 +2362,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->trem_sel[0] = (chip->reg_ch38new_l[1] >> 1) & 1;
 
-        chip->trem_sens[0] = (reg_opa0_l[1] >> 5) & 3;
+        chip->trem_sens[0] = (chip->reg_opa0_l[1] >> 5) & 3;
     }
     if (hclk2) {
         chip->trem_subcnt[1] = chip->trem_subcnt[0];
@@ -2449,7 +2449,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->op_sign[0] = (chip->op_sign[1] << 1) | sign;
         chip->op_mute[0] = (chip->op_mute[1] << 1) | mute;
 
-        chip->op_logsin_index[0] = phase1;
+        chip->op_logsin_index = phase1;
 
         int logsin_l = (chip->op_logsin_base[0] & 63) + (chip->op_logsin_delta[0] & 63);
         chip->op_logsin_c1 = logsin_l >> 6;
@@ -2728,7 +2728,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         }
 
         chip->ac_shifter[0] = chip->ac_shifter[1] >> 1;
-        chip->ac_shifter[0] |= chip->shifter_in << 20;
+        chip->ac_shifter[0] |= chip->ac_shifter_in << 20;
 
         chip->ac_so_l[0] = bit;
         chip->ac_so_l[1] = chip->ac_so_l[0];
@@ -2744,7 +2744,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
     }
     if (hclk2) {
 
-        int addr_l = (chip->ac_add_r[0] & 0x3ff) + (chip->ac_sum_r[0] & 0x3ff);
+        int addr_l = (chip->ac_add_r[0] & 0x3ff) + (chip->ac_sum_r_lo[0] & 0x3ff);
 
         chip->ac_sum_r_lo[1] = addr_l & 0x3ff;
         chip->ac_sum_r_c = addr_l >> 10;
@@ -2755,7 +2755,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->ac_sum_r_hi[1] = chip->ac_fsm14[0] ? 0 : chip->ac_sum_r_hi[0];
 
-        addr_l = (chip->ac_add_l[0] & 0x3ff) + (chip->ac_sum_l[0] & 0x3ff);
+        addr_l = (chip->ac_add_l[0] & 0x3ff) + (chip->ac_sum_l_lo[0] & 0x3ff);
 
         chip->ac_sum_l_lo[1] = addr_l & 0x3ff;
         chip->ac_sum_l_c = addr_l >> 10;
@@ -3054,7 +3054,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->st_ch_cnt[1] = chip->st_ch_cnt[0];
 
-        chip->st_irq = (chip->st_latch & 3) = 0 || chip->st_ch_irq[0];
+        chip->st_irq = (chip->st_latch & 3) != 0 || chip->st_ch_irq[0];
 
         chip->st_ch_cnt_rst = chip->fsm_o21;
 
