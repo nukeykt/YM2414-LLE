@@ -774,7 +774,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         if (chip->fsm_13[1]) {
             chip->fsm_op_cnt[0] = 0;
         } else {
-            chip->fsm_op_cnt[0] = chip->fsm_op_cnt[1] + ((chip->fsm_op_sync[1] >> 1) & 1);
+            chip->fsm_op_cnt[0] = (chip->fsm_op_cnt[1] + ((chip->fsm_op_sync[1] >> 1) & 1)) & 3;
         }
         chip->fsm_alg_latch = chip->reg_alg[1];
     }
@@ -1122,6 +1122,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->reg_op1_bus_l[0] = chip->reg_op1_bus[1] & 0x3fffff;
         chip->reg_op2_bus_l[0] = chip->reg_op2_bus[1];
 
+        chip->ramp_tl_cell_out = (chip->reg_op1_bus[1] >> 22) & 1023;
 
         chip->reg_30_0_l[0] = (chip->reg_30_0_l[1] << 1) | (chip->reg_ch30new_l[1] & 1);
         chip->reg_30_1_l[0] = (chip->reg_ch_bus >> 45) & 1;
@@ -1130,11 +1131,11 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->reg_data_valid[1] = chip->reg_data_valid[0];
         chip->reg_counter[1] = chip->reg_counter[0];
         int ch_match = (chip->reg_counter[0] & 7) == (chip->reg_address[0] & 7) && chip->reg_data_valid[0];
-        chip->reg_match00 = ch_match && (chip->reg_address[0] & 0x38) == 0;
-        chip->reg_match20 = ch_match && (chip->reg_address[0] & 0x38) == 0x20;
-        chip->reg_match28 = ch_match && (chip->reg_address[0] & 0x38) == 0x28;
-        chip->reg_match30 = ch_match && (chip->reg_address[0] & 0x38) == 0x30;
-        chip->reg_match38 = ch_match && (chip->reg_address[0] & 0x38) == 0x38;
+        chip->reg_match00 = ch_match && (chip->reg_address[0] & 0xf8) == 0;
+        chip->reg_match20 = ch_match && (chip->reg_address[0] & 0xf8) == 0x20;
+        chip->reg_match28 = ch_match && (chip->reg_address[0] & 0xf8) == 0x28;
+        chip->reg_match30 = ch_match && (chip->reg_address[0] & 0xf8) == 0x30;
+        chip->reg_match38 = ch_match && (chip->reg_address[0] & 0xf8) == 0x38;
         int op_match = chip->reg_counter[0] == (chip->reg_address[0] & 31) && chip->reg_data_valid[0];
         chip->reg_match40 = op_match && (chip->reg_address[0] & 0xe0) == 0x40;
         chip->reg_match60 = op_match && (chip->reg_address[0] & 0xe0) == 0x60;
@@ -1731,8 +1732,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->ramp_tl_reg[0] = chip->reg_op60_l[1];
         chip->ramp_tl_reg[2] = chip->ramp_tl_reg[1];
-
-        chip->ramp_tl_cell_out = (chip->reg_op1_bus_l[1] >> 22) & 1023;
 
         int of = (chip->ramp_tl_cmp >> 10) & 1;
 
