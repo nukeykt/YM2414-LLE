@@ -360,7 +360,7 @@ typedef struct {
     int eg_rateks;
     int eg_zerorate[3];
     int eg_zerorate2;
-    int eg_maxrate[2];
+    int eg_maxrate[3];
     int eg_stephi;
     int eg_rate10;
     int eg_rate11;
@@ -573,3 +573,4 @@ typedef struct {
 
 } ym2414_t;
 
+void OPZLLE_Clock(ym2414_t* chip, int clk);
