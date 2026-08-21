@@ -1773,7 +1773,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         int inc = chip->eg_clock[0] && chip->eg_half[1] && (chip->eg_timer_carry[1] || chip->eg_sync2[2]);
         int timer_bit = (chip->eg_timer[1] & 1) + inc;
 
-        int next_bit = !ic_async || (timer_bit & 1) != 0;
+        int next_bit = !ic_async && (timer_bit & 1) != 0;
         chip->eg_timer[0] = (chip->eg_timer[1] >> 1) | (next_bit << 15);
         int masked_bit = next_bit && chip->eg_masking[1];
         chip->eg_timer_masked[0] = (chip->eg_timer_masked[1] >> 1) | (masked_bit << 15);
@@ -1881,9 +1881,9 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         int shiftsum = chip->eg_shift_add1 + chip->eg_shift_add2;
 
-        int incl = (shiftsum == 26 && !chip->eg_zerorate2)
-            || (shiftsum == 27 && (chip->eg_rate_lo & 2) != 0)
-            || (shiftsum == 28 && (chip->eg_rate_lo & 1) != 0);
+        int incl = (shiftsum == 10 && !chip->eg_zerorate2)
+            || (shiftsum == 11 && (chip->eg_rate_lo & 2) != 0)
+            || (shiftsum == 12 && (chip->eg_rate_lo & 1) != 0);
 
         chip->eg_incp1 = (chip->eg_rate10 && !chip->eg_stephi) || (!chip->eg_ratehi && !chip->eg_zerorate[2] && incl);
         chip->eg_incp2 = (chip->eg_rate10 && chip->eg_stephi) || (chip->eg_rate11 && !chip->eg_stephi);
