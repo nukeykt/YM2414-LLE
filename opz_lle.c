@@ -1275,6 +1275,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->freq_kc[2] = chip->freq_kc[1];
         chip->freq_kf[0] = chip->reg_ch30_l[1];
         chip->freq_kf[2] = chip->freq_kf[1];
+        chip->freq_kf[4] = chip->freq_kf[3];
         chip->freq_lfo_pms[0] = (chip->reg_ch38_l[1] >> 2) & 7;
         chip->freq_lfo_pms[2] = chip->freq_lfo_pms[1];
 
@@ -1540,9 +1541,9 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->freq_freq_frac[1] = chip->freq_freq_frac[0];
         chip->freq_freq_frac[3] = chip->freq_freq_frac[2];
 
-        chip->freq_rom_base_h = chip->freq_rom_base[0] >> 5;
+        chip->freq_rom_base_h = chip->freq_rom_base[1] >> 5;
 
-        int freq_sum_l = (chip->freq_rom_base[0] & 31) + chip->freq_lerp + chip->freq_freq_frac0;
+        int freq_sum_l = (chip->freq_rom_base[1] & 31) + chip->freq_lerp + chip->freq_freq_frac0;
 
         chip->freq_fnum_l = freq_sum_l & 31;
         chip->freq_fnum_l_of = (freq_sum_l >> 5) & 1;
