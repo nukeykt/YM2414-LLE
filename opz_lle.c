@@ -2418,11 +2418,15 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         // 6 - 3-14
         // 7 - 2-13
         int mod = (short)chip->op_modsum[2];
-        chip->op_mod_in[0] = (mod >> chip->op_mod_shift[1]) & 4095;
+        if (chip->op_mod_shift[1] != 0) {
+            chip->op_mod_in[0] = (mod >> (9 - chip->op_mod_shift[1])) & 4095;
+        } else {
+            chip->op_mod_in[0] = 0;
+        }
 
         int sh = 0;
         if (chip->op_dofb[1]) {
-            sh = chip->op_fb[5] == 0 ? 31 : 9 - chip->op_fb[5];
+            sh = chip->op_fb[5];
         }
         chip->op_mod_shift[0] = sh;
 
@@ -2510,7 +2514,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->op_value[0] = shifted_h;
         chip->op_value[2] = chip->op_value[1];
         chip->op_value[4] = chip->op_value[3];
-        int corr = (chip->op_sign[1] & 2048) != 0;
+        int corr = (chip->op_sign[1] & 512) != 0;
         chip->op_value[6] = (chip->op_value[5] + corr) & 65535;
         chip->op_value[8] = chip->op_value[7];
 
