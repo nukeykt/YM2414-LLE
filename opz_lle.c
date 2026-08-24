@@ -2274,7 +2274,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->eg_tl_trem[2] = chip->eg_tl_trem[1] >> 6;
 
         int eg_sum_l = (chip->eg_tl_trem[1] & 63) + chip->eg_lev_lfo_l[1];
-        chip->eg_sum[0] = eg_sum_l & 63;
+        chip->eg_sum[0] = eg_sum_l & 62;
         chip->eg_sum_c1 = (eg_sum_l >> 6) & 1;
 
         if (chip->eg_sum_c2 || chip->eg_lev_lfo_c2[2]) {
@@ -2284,6 +2284,8 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         }
 
         chip->eg_dbg_load[1] = chip->eg_dbg_load[0];
+
+        chip->eg_dbg_shifter[1] = chip->eg_dbg_shifter[0];
     }
 
     if (hclk1) {
@@ -3034,10 +3036,10 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->st_test = (chip->reg_test[1] & 64) != 0;
         if (chip->reg_test[1] & 128) {
             chip->st_dbg = (chip->op_value[9] >> 8) & 63;
-            if (chip->reg_a[1] & 2) {
+            if ((chip->reg_a[1] & 2) == 0) {
                 chip->st_dbg |= (chip->op_value[9] >> 8) & 192;
             } else {
-                if (chip->eg_dbg_shifter[1] & 32768) {
+                if (chip->eg_dbg_shifter[1] & 2048) {
                     chip->st_dbg |= 64;
                 }
                 if (chip->pg_dbg[1] & 1) {
