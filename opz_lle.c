@@ -2330,16 +2330,16 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->trem_cmp_adder_c[0] = cmp_co;
 
-        if (!cmp_co && chip->trem_fsm_9[1]) {
+        if (!chip->trem_cmp_adder_c[1] && chip->trem_fsm_9[1]) {
             chip->trem_state[0][0] = 0;
-        } else if (cmp_co && chip->trem_fsm_9[1]) {
+        } else if (chip->trem_cmp_adder_c[1] && chip->trem_fsm_9[1]) {
             chip->trem_state[0][0] = 1;
         } else {
             chip->trem_state[0][0] = chip->trem_state[0][1];
         }
-        if (!cmp_co && chip->fsm_19[1]) {
+        if (!chip->trem_cmp_adder_c[1] && chip->fsm_19[1]) {
             chip->trem_state[1][0] = 0;
-        } else if (cmp_co && chip->fsm_19[1]) {
+        } else if (chip->trem_cmp_adder_c[1] && chip->fsm_19[1]) {
             chip->trem_state[1][0] = 1;
         } else {
             chip->trem_state[1][0] = chip->trem_state[1][1];
@@ -2380,6 +2380,9 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->trem_shifter[1] = chip->trem_shifter[0];
         chip->trem_shifter2[1] = chip->trem_shifter2[0];
+
+        chip->trem_ctrl1[1] = chip->trem_ctrl1[0];
+        chip->trem_ctrl2[1] = chip->trem_ctrl2[0];
 
         chip->trem_adder_c[1] = chip->trem_adder_c[0];
 
