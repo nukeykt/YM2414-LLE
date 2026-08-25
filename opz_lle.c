@@ -810,15 +810,15 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         int op = chip->fsm_op_cnt[0];
         int alg = chip->fsm_alg_latch;
         int unk = (chip->fsm_o9[0] & 3) != 0 && (chip->reg_15[0] & 3) == 3;
-        chip->fsm_alg_o[0] = op == 0;
-        chip->fsm_alg_o[1] = 0;
-        chip->fsm_alg_o[2] = 0;
-        chip->fsm_alg_o[3] = 0;
-        chip->fsm_alg_o[4] = 0;
-        chip->fsm_alg_o[5] = 0;
-        chip->fsm_alg_o[6] = 0;
-        chip->fsm_alg_o[7] = 0;
-        chip->fsm_alg_o[8] = 0;
+        chip->fsm_alg_o[0] = op == 0; // load op2
+        chip->fsm_alg_o[1] = 0; // do fb
+        chip->fsm_alg_o[2] = 0; // load op1
+        chip->fsm_alg_o[3] = 0; // use op1
+        chip->fsm_alg_o[4] = 0; // use op2
+        chip->fsm_alg_o[5] = 0; // use op2 last
+        chip->fsm_alg_o[6] = 0; // use prev
+        chip->fsm_alg_o[7] = 0; // use op1 last
+        chip->fsm_alg_o[8] = 0; // output
         switch (op) {
             case 0:
                 if (unk) {
@@ -1789,7 +1789,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->eg_ar[0] = chip->reg_op2_bus[1] & 0x1f;
         chip->eg_d1r[0] = (chip->reg_op2_bus[1] >> 8) & 0x1f;
         chip->eg_d2r[0] = (chip->reg_op2_bus[1] >> 16) & 0x1f;
-        chip->eg_rr[0] = (chip->reg_op2_bus[1] >> 30) & 0xf;
+        chip->eg_rr[0] = (chip->reg_op2_bus[1] >> 29) & 0xf;
         int revrate = (chip->reg_op2_bus[1] >> 23) & 7;
         chip->eg_rev[0] = revrate;
         chip->eg_zero_rev[0] = revrate == 0;
@@ -2429,7 +2429,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
             chip->op_mod_in[0] = 0;
         }
 
-        int sh = 0;
+        int sh = 9;
         if (chip->op_dofb[1]) {
             sh = chip->op_fb[5];
         }
@@ -2524,6 +2524,11 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->op_value[8] = chip->op_value[7];
 
         chip->op_cell_sel[0] = (chip->op_cell_sel[1] << 1) | chip->fsm_o9[1];
+
+        // 0 - op1
+        // 1 - op1 last
+        // 2 - op2
+        // 3 - op2 last
 
         chip->op_cell_in[0] = chip->fsm_alg_o[2] ? chip->op_value[9] : chip->op_cell_bus_l[0][1];
         chip->op_cell_in[1] = chip->fsm_alg_o[2] ? chip->op_cell_bus_l[0][1] : chip->op_cell_bus_l[1][1];
