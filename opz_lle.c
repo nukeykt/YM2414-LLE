@@ -2245,7 +2245,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->eg_int = (chip->eg_int_en[0] & 8) != 0 && int_threshold && ((chip->eg_o18[2] && special) || chip->eg_o19[2]);
 
-        int notattack = chip->eg_level_l[2] != eg_state_attack;
+        int notattack = chip->eg_state_l[2] != eg_state_attack;
 
         chip->eg_rev1 = notattack && !rev_threshold_n && ((chip->eg_o18[2] && special) || chip->eg_o19[2]);
         chip->eg_rev2 = notattack && !rev_threshold_n && ((chip->eg_o17[2] && special) || (chip->eg_o19[2] && !special));
