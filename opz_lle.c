@@ -809,7 +809,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->fsm_op_cnt[1] = chip->fsm_op_cnt[0];
         int op = chip->fsm_op_cnt[0];
         int alg = chip->fsm_alg_latch;
-        int unk = (chip->fsm_o9[0] & 3) != 0 && (chip->reg_15[0] & 3) == 3;
+        int unk = (chip->fsm_op_sync[0] & 3) != 0 && (chip->reg_15[0] & 3) == 3;
         chip->fsm_alg_o[0] = op == 0; // load op2
         chip->fsm_alg_o[1] = 0; // do fb
         chip->fsm_alg_o[2] = 0; // load op1
@@ -928,7 +928,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->reg_address[1] = chip->reg_address[0];
         chip->reg_address_valid[1] = chip->reg_address_valid[0];
         chip->reg_data[1] = chip->reg_data[0];
-        chip->reg_data_valid[1] = chip->reg_data_valid[0];
     }
 
     if (hclk1) {
