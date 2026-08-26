@@ -2771,7 +2771,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->ac_add_r[1] = chip->ac_add_r[0] >> 10;
 
-        chip->ac_sum_r_l[1] = chip->ac_sum_r_l[0] | (chip->ac_sum_r_hi[1] << 10);
+        chip->ac_sum_r_l[1] = chip->ac_sum_r_l[0] | (chip->ac_sum_r_hi[0] << 10);
 
         chip->ac_sum_r_hi[1] = chip->ac_fsm14[0] ? 0 : chip->ac_sum_r_hi[0];
 
@@ -2782,7 +2782,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
 
         chip->ac_add_l[1] = chip->ac_add_l[0] >> 10;
 
-        chip->ac_sum_l_l[1] = chip->ac_sum_l_l[0] | (chip->ac_sum_l_hi[1] << 10);
+        chip->ac_sum_l_l[1] = chip->ac_sum_l_l[0] | (chip->ac_sum_l_hi[0] << 10);
 
         chip->ac_sum_l_hi[1] = chip->ac_fsm30[0] ? 0 : chip->ac_sum_l_hi[0];
 
