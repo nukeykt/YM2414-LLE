@@ -184,7 +184,7 @@ static const int sin_delta[3][256] = {
 };
 
 static void LFO_Clock(ym2414_t* chip, int hclk1, int hclk2, int ic_async, ym2414_lfo_t* lfo, int which) {
-    int* whichfreq = which ? chip->reg_lfo_freq : chip->reg_16;
+    int* whichfreq = which ? chip->reg_16 : chip->reg_lfo_freq;
     if (hclk1) {
         int lfrq_h = whichfreq[1] >> 4;
 
@@ -377,7 +377,7 @@ static void LFO_Clock(ym2414_t* chip, int hclk1, int hclk2, int ic_async, ym2414
             int pm_load = lfo_sel && (lfo->bcnt[0] & 7) == 7;
             if (pm_load) {
                 lfo->pm = (lfo->out_shifter[1] >> 8) & 127;
-                lfo->pm |= lfo->pm_sign << 8;
+                lfo->pm |= lfo->pm_sign << 7;
             }
 
             int am_load = !lfo_sel && (lfo->bcnt[0] & 7) == 7;
@@ -1464,7 +1464,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         int ps7 = pms == 7;
         int hi = ps7 ? (lfo_pm_out >> 4) & 7 : (lfo_pm_out >> 5) & 3;
         int hi2 = (hi >> 2) & 1;
-        int add = ((hi & 6) != 0 && pms == 7) || (pms >= 6 && (hi & 3) == 3);
+        int add = ((hi & 6) == 6 && pms == 7) || (pms >= 6 && (hi & 3) == 3);
 
         int pm_sum = hi + hi2 + add;
         int lfo_add2 = ps7 ? pm_sum & 15 : ((pm_sum & 7) << 1) | ((lfo_pm_out >> 4) & 1);
