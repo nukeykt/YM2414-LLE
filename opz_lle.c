@@ -315,6 +315,8 @@ static void LFO_Clock(ym2414_t* chip, int hclk1, int hclk2, int ic_async, ym2414
         lfo->out_shifter[1] = lfo->out_shifter[0];
         lfo->shifter[1] = lfo->shifter[0];
 
+
+        lfo->cnt3_sync[1] = lfo->cnt3_sync[0];
         lfo->cnt3_inc[1] = lfo->cnt3_inc[0];
         lfo->cnt3[1] = lfo->cnt3[0];
 
@@ -436,6 +438,10 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
     int wr0 = chip->ic_sync || (!chip->input.n_cs && !chip->input.n_wr && !chip->input.a0);
     int wr1 = !chip->ic_sync && !chip->input.n_cs && !chip->input.n_wr && chip->input.a0;
 
+    if (hclk2) {
+        chip->write0_l[2] = chip->write0_l[1];
+    }
+
     if (wr0) {
         chip->write0_trig = 1;
     } else if (chip->write0_l[2]) {
@@ -445,11 +451,14 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
     if (hclk2) {
         chip->write0_l[0] = chip->write0_trig;
         //chip->write0_l[1] = chip->write0_l[1];
-        chip->write0_l[2] = chip->write0_l[1];
     }
     if (hclk1) {
         //chip->write0_l[0] = chip->write0_l[0];
         chip->write0_l[1] = chip->write0_l[0] && !wr0;
+    }
+
+    if (hclk2) {
+        chip->write1_l[2] = chip->write1_l[1];
     }
 
     if (wr1) {
@@ -461,7 +470,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
     if (hclk2) {
         chip->write1_l[0] = chip->write1_trig;
         //chip->write1_l[1] = chip->write1_l[1];
-        chip->write1_l[2] = chip->write1_l[1];
     }
     if (hclk1) {
         //chip->write1_l[0] = chip->write1_l[0];
@@ -1232,7 +1240,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->lfo1.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data_l & 16) != 0);
         chip->lfo2.cnt3_sync[0] = chip->ic_sync || (wr1b && (chip->data_l & 32) != 0);
         chip->lfo1.freq_write[0] = write1_en && chip->reg_write_18[1];
-        chip->lfo2.freq_write[0] = write1_en && chip->reg_write_16[1];
+        chip->lfo2.freq_write[0] = write1_en && chip->reg_write_16[1] && newm;
 
         chip->lfo_pmsel[0] = (chip->reg_ch38new_l[1] >> 2) & 1;
         chip->lfo_amsel[0] = (chip->reg_ch38new_l[1] >> 0) & 1;
@@ -1255,8 +1263,6 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
         chip->lfo_subcnt[1] = chip->lfo_subcnt[0];
         chip->lfo_subcnt_of[1] = chip->lfo_subcnt_of[0];
         chip->lfo_bcnt_rst = chip->fsm_o16 && chip->lfo_subcnt[0] == 2;
-
-        chip->lfo2.cnt3_sync[1] = chip->lfo1.cnt3_sync[0];
 
         chip->lfo_pmsel[1] = chip->lfo_pmsel[0];
         chip->lfo_amsel[1] = chip->lfo_amsel[0];
