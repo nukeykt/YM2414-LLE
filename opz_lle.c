@@ -1400,7 +1400,7 @@ void OPZLLE_Clock(ym2414_t* chip, int clk) {
             if ((chip->freq_freq_frac[3] & 1) != 0) {
                 lerp3 |= 2;
             }
-            if ((chip->freq_rom_slope & 1) != 0 && (chip->freq_freq_frac[3] & 12) == 12) {
+            if ((chip->freq_rom_slope & 1) == 0 && (chip->freq_freq_frac[3] & 12) == 12) {
                 lerp3 |= 4;
             }
             if ((chip->freq_freq_frac[3] & 2) != 0) {
